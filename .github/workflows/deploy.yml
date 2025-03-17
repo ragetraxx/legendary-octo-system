@@ -40,6 +40,3 @@ steps:
       -c:a aac -b:a 128k -ar 44100 \  
       -f flv "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph" \  
       -loglevel verbose
-
-can you add on top left artist and title of the current song played on zeno link
-
