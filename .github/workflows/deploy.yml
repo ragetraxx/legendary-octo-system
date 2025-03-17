@@ -3,8 +3,8 @@ name: Stream to RTMP
 on:
   push:
     branches:
-      - main  # Runs when pushing to the main branch
-  workflow_dispatch:  # Allows manual trigger
+      - main
+  workflow_dispatch:
 
 jobs:
   stream:
@@ -14,10 +14,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install FFmpeg
+      - name: Install Dependencies (FFmpeg, jq, curl)
         run: |
           sudo apt update
-          sudo apt install -y ffmpeg
+          sudo apt install -y ffmpeg jq curl
           ffmpeg -version  # Log installed version
 
       - name: Verify Logo File Existence
@@ -29,13 +29,30 @@ jobs:
             exit 1
           fi
 
+      - name: Fetch Current Song Metadata
+        run: |
+          while true; do
+            METADATA=$(curl -s "https://stream.zeno.fm/q1n2wyfs7x8uv.json")
+            SONG_TITLE=$(echo "$METADATA" | jq -r '.title' | cut -d '-' -f2- | xargs)
+            ARTIST=$(echo "$METADATA" | jq -r '.title' | cut -d '-' -f1 | xargs)
+
+            echo "🎵 Now Playing: $ARTIST - $SONG_TITLE"
+            echo "metadata_title='$SONG_TITLE'" > metadata.txt
+            echo "metadata_artist='$ARTIST'" >> metadata.txt
+
+            sleep 5  # Update metadata every 5 seconds
+          done &
+
       - name: Start FFmpeg Stream
         run: |
           echo "🚀 Starting FFmpeg stream..."
           ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" \
           -i logo.png \
-          -filter_complex "[0:a]showcqt=s=1280x720:fps=20:count=8[visual];[visual][1:v]overlay=W-w-20:20[out]" \
-          -map "[out]" -map "0:a" \
+          -filter_complex "[0:a]showcqt=s=1280x720:fps=20:count=8[visual]; \
+                           [visual][1:v]overlay=W-w-20:20[bg]; \
+                           drawtext=textfile=metadata.txt:text='%{metadata_title}':fontsize=30:fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:x=10:y=10, \
+                           drawtext=textfile=metadata.txt:text='%{metadata_artist}':fontsize=26:fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:x=10:y=50" \
+          -map "[bg]" -map "0:a" \
           -c:v libx264 -tune stillimage -b:v 1200k -maxrate 1200k -bufsize 1200k -g 50 -pix_fmt yuv420p \
           -c:a aac -b:a 128k -ar 44100 \
           -f flv "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph" \
