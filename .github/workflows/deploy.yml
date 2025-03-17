@@ -48,7 +48,7 @@ jobs:
         ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" \
         -i logo.png \
         -filter_complex "[0:a]asplit[a1][a2]; \
-                         [a1]showcqt=s=1280x200:fps=20:count=8:fullhd=1:bar_g=3:sono_g=0.8[visual]; \
+                         [a1]showcqt=s=1280x200:fps=20:count=8:fullhd=1:bar_g=3:sono_g=3[visual]; \
                          [a2]anull[audio]; \
                          [visual]pad=1280:720:0:520:color=black[visual_bg]; \
                          [visual_bg][1:v]overlay=W-w-20:20[bg]; \
