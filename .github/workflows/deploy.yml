@@ -23,13 +23,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Ensure background & logo exist
-        run: |
-          if [ ! -f background.png ] || [ ! -f logo.png ]; then
-            echo "Error: background.png or logo.png is missing!"
-            exit 1
-          fi
-
       - name: Run live stream script
         run: |
           nohup python3 stream.py > stream.log 2>&1 &
+          sleep infinity  # Keeps GitHub Actions running
+
+      - name: Show FFmpeg logs (for debugging)
+        run: cat ffmpeg_output.log
