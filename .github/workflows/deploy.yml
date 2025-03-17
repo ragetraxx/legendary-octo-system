@@ -1,25 +1,26 @@
-name: Deploy RTMP Streamer
+name: Stream to RTMP
 
 on:
   push:
     branches:
-      - main
-  workflow_dispatch: # Allow manual triggers
+      - main  # Runs when pushing to main branch
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
-  deploy:
+  stream:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Install FFmpeg
         run: sudo apt update && sudo apt install -y ffmpeg
 
-      - name: Start Streaming
+      - name: Start FFmpeg stream
         run: |
-          ffmpeg -re -i https://stream.zeno.fm/q1n2wyfs7x8uv \
-          -loop 1 -i background.png -vf scale=1280:720 \
-          -c:v libx264 -tune stillimage -b:v 1500k -pix_fmt yuv420p \
-          -c:a aac -b:a 128k -ar 44100 \
-          -f flv rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph
+          ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" \
+          -loop 1 -i background.png \
+          -filter_complex "[1:v]scale=1280:720[bg];[bg]drawtext=text='%{localtime\\:%H\\:%M\\:%S}':fontcolor=white:fontsize=50:x=1000:y=30[clock];[0:a]showcqt=s=1280x200:fps=30:count=40[visual];[clock][visual]overlay=x=0:y=520[out]" \
+          -map "[out]" -map "0:a" -c:v libx264 -tune stillimage -b:v 1500k -pix_fmt yuv420p \
+          -c:a aac -b:a 128k -ar 44100 -f flv "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph"
