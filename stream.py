@@ -24,6 +24,16 @@ ffmpeg_cmd = [
 
 # Run the FFmpeg command
 try:
-    subprocess.run(ffmpeg_cmd, check=True)
-except subprocess.CalledProcessError as e:
-    print(f"Error: {e}")
+    process = subprocess.Popen(ffmpeg_cmd, stderr=subprocess.PIPE)
+    _, stderr = process.communicate()
+    if process.returncode != 0:
+        print(f"FFmpeg Error (Return Code: {process.returncode}):")
+        print(stderr.decode())
+    else:
+        print("FFmpeg stream started successfully.")
+
+except FileNotFoundError:
+    print("Error: FFmpeg not found. Ensure it is installed and in your PATH.")
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+
