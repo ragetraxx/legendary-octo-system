@@ -1,10 +1,12 @@
-name: Live Visualizer Stream
+name: Rage Music PH Stream
 
 on:
   push:
-  workflow_dispatch:
+    branches:
+      - main
   schedule:
-    - cron: "*/10 * * * *"  # Runs every 10 minutes
+    - cron: '*/30 * * * *'  # Runs every 30 minutes
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
   stream:
@@ -14,37 +16,34 @@ jobs:
       - name: 🚀 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🛠️ Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y ffmpeg fonts-dejavu
+      - name: 🛠️ Install FFmpeg
+        run: sudo apt update && sudo apt install -y ffmpeg
 
-      - name: 🎵 Start Metadata Update Loop
+      - name: 📝 Create Metadata Files
         run: |
           echo "Loading..." > title.txt
           echo "Rage Music PH" > artist.txt
 
+      - name: 🔄 Start Metadata Update Loop
+        run: |
           while true; do
             METADATA=$(ffprobe -loglevel error -show_entries format_tags=StreamTitle -of default=noprint_wrappers=1 "https://stream.zeno.fm/q1n2wyfs7x8uv")
-
             SONG_TITLE=$(echo "$METADATA" | sed 's/StreamTitle=//' | cut -d '-' -f2- | xargs)
             ARTIST=$(echo "$METADATA" | sed 's/StreamTitle=//' | cut -d '-' -f1 | xargs)
-
             echo "$SONG_TITLE" > title.txt
             echo "$ARTIST" > artist.txt
-            
             sleep 5
           done &
-
-      - name: 🔊 Start FFmpeg Stream with Optimized Visualizer
+      
+      - name: 🎵 Start FFmpeg Stream
         run: |
           ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" -i logo.png \
           -filter_complex "[0:a]asplit[a1][a2]; \
                            [a1]showcqt=s=1920x1080:fps=60:count=10:bar_g=5:sono_g=2[visual]; \
                            [visual]drawtext=textfile=title.txt:fontsize=50:fontcolor=yellow:x=30:y=h-150[title]; \
-                           [title]drawtext=textfile=artist.txt:fontsize=40:fontcolor=yellow:x=30:y=h-90[artist]; \
-                           [artist][1:v]overlay=W/2-w/2:30" \
-          -map "[artist]" -map "[a2]" \
+                           [title]drawtext=textfile=artist.txt:fontsize=40:fontcolor=yellow:x=30:y=h-90[final]; \
+                           [final][1:v]overlay=W/2-w/2:30[out]" \
+          -map "[out]" -map "[a2]" \
           -c:v libx264 -preset ultrafast -tune film -b:v 4500k -maxrate 4500k -bufsize 5000k -g 30 -pix_fmt yuv420p \
           -c:a aac -b:a 192k -ar 44100 \
           -f flv "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph"
