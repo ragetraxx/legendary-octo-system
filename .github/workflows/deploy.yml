@@ -1,59 +1,61 @@
-name: Stream to RTMP
+name: Rage Music PH Live Stream
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *" # Runs every 30 minutes
 
 jobs:
   stream:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: 🚀 Checkout Repository
+      uses: actions/checkout@v4
 
-      - name: Install Dependencies (FFmpeg, jq, curl)
-        run: |
-          sudo apt update
-          sudo apt install -y ffmpeg jq curl
-          ffmpeg -version  # Log installed version
+    - name: 🛠 Install FFmpeg
+      run: |
+        sudo apt update
+        sudo apt install -y ffmpeg
 
-      - name: Verify Logo File Existence
-        run: |
-          if [[ -f logo.png ]]; then
-            echo "✅ logo.png found."
-          else
-            echo "❌ ERROR: logo.png NOT FOUND!"
-            exit 1
-          fi
+    - name: 🎵 Start Streaming
+      run: |
+        echo "🚀 Starting FFmpeg stream..."
 
-      - name: Fetch Current Song Metadata
-        run: |
-          while true; do
-            METADATA=$(curl -s "https://stream.zeno.fm/q1n2wyfs7x8uv.json")
-            SONG_TITLE=$(echo "$METADATA" | jq -r '.title' | cut -d '-' -f2- | xargs)
-            ARTIST=$(echo "$METADATA" | jq -r '.title' | cut -d '-' -f1 | xargs)
+        # Create initial text files for title and artist
+        echo "Loading..." > title.txt
+        echo "Rage Music PH" > artist.txt
 
-            echo "🎵 Now Playing: $ARTIST - $SONG_TITLE"
-            echo "$SONG_TITLE" > title.txt
-            echo "$ARTIST" > artist.txt
+        # Start metadata update loop in the background
+        while true; do
+          METADATA=$(ffprobe -loglevel error -show_entries format_tags=StreamTitle -of default=noprint_wrappers=1 "https://stream.zeno.fm/q1n2wyfs7x8uv")
+          
+          # Extract artist and title
+          SONG_TITLE=$(echo "$METADATA" | sed 's/StreamTitle=//' | cut -d '-' -f2- | xargs)
+          ARTIST=$(echo "$METADATA" | sed 's/StreamTitle=//' | cut -d '-' -f1 | xargs)
 
-            sleep 5  # Update metadata every 5 seconds
-          done &
+          # Update text files
+          echo "$SONG_TITLE" > title.txt
+          echo "$ARTIST" > artist.txt
 
-      - name: Start FFmpeg Stream
-        run: |
-          echo "🚀 Starting FFmpeg stream..."
-          ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" \
-          -i logo.png \
-          -filter_complex "[0:a]showcqt=s=1280x720:fps=20:count=8[visual]; \
-                           [visual][1:v]overlay=W-w-20:20[bg]; \
-                           drawtext=textfile=title.txt:fontsize=30:fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:x=10:y=10, \
-                           drawtext=textfile=artist.txt:fontsize=26:fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:x=10:y=50" \
-          -map "[bg]" -map "0:a" \
-          -c:v libx264 -tune stillimage -b:v 1200k -maxrate 1200k -bufsize 1200k -g 50 -pix_fmt yuv420p \
-          -c:a aac -b:a 128k -ar 44100 \
-          -f flv "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph" \
-          -loglevel verbose
+          sleep 5  # Update every 5 seconds
+        done &
+
+        # Start FFmpeg stream
+        ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" \
+        -i logo.png \
+        -filter_complex "[0:a]asplit[a1][a2]; \
+                         [a1]showcqt=s=1280x200:fps=20:count=8:fullhd=1:bar_g=0.5:sono_g=0.8[visual]; \
+                         [a2]anull[audio]; \
+                         [visual]pad=1280:720:0:520:color=black[visual_bg]; \
+                         [visual_bg][1:v]overlay=W-w-20:20[bg]; \
+                         [bg]drawtext=textfile=title.txt:fontsize=30:fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:x=10:y=10[title]; \
+                         [title]drawtext=textfile=artist.txt:fontsize=26:fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:x=10:y=50[final]" \
+        -map "[final]" -map "[audio]" \
+        -c:v libx264 -tune stillimage -b:v 1200k -maxrate 1200k -bufsize 1200k -g 50 -pix_fmt yuv420p \
+        -c:a aac -b:a 128k -ar 44100 \
+        -f flv "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph" \
+        -loglevel verbose
