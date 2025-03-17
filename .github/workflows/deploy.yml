@@ -3,7 +3,7 @@ name: Stream to RTMP
 on:
   push:
     branches:
-      - main  # Runs when pushing to main branch
+      - main  # Runs when pushing to the main branch
   workflow_dispatch:  # Allows manual trigger
 
 jobs:
@@ -15,17 +15,28 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install FFmpeg
-        run: sudo apt update && sudo apt install -y ffmpeg
-
-      - name: Verify File Existence
         run: |
-          ls -lah
-          file logo.png || echo "logo.png NOT FOUND!"
+          sudo apt update
+          sudo apt install -y ffmpeg
+          ffmpeg -version  # Log installed version
 
-      - name: Start FFmpeg stream
+      - name: Verify Logo File Existence
         run: |
+          if [[ -f logo.png ]]; then
+            echo "✅ logo.png found."
+          else
+            echo "❌ ERROR: logo.png NOT FOUND!"
+            exit 1
+          fi
+
+      - name: Start FFmpeg Stream
+        run: |
+          echo "🚀 Starting FFmpeg stream..."
           ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" \
           -i logo.png \
           -filter_complex "[0:a]showcqt=s=1280x720:fps=20:count=8[visual];[visual][1:v]overlay=W-w-20:20[out]" \
-          -map "[out]" -map "0:a" -c:v libx264 -tune stillimage -b:v 1200k -pix_fmt yuv420p \
-          -c:a aac -b:a 128k -ar 44100 -f flv "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph"
+          -map "[out]" -map "0:a" \
+          -c:v libx264 -tune stillimage -b:v 1200k -maxrate 1200k -bufsize 1200k -g 50 -pix_fmt yuv420p \
+          -c:a aac -b:a 128k -ar 44100 \
+          -f flv "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph" \
+          -loglevel verbose
