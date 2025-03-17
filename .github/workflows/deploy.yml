@@ -3,8 +3,8 @@ name: Stream to RTMP
 on:
   push:
     branches:
-      - main  
-  workflow_dispatch:  
+      - main  # Runs when pushing to main branch
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
   stream:
@@ -17,13 +17,15 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt update && sudo apt install -y ffmpeg
 
-      - name: Debug FFmpeg Capabilities
-        run: ffmpeg -filters | grep showcqt
+      - name: Verify File Existence
+        run: |
+          ls -lah
+          file logo.png || echo "logo.png NOT FOUND!"
 
       - name: Start FFmpeg stream
         run: |
           ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" \
-          -loop 1 -i background.png -i logo.png \
-          -filter_complex "[1:v]scale=1280:720[bg];[0:a]showcqt=s=1280x720:fps=20:count=8[visual];[bg][visual]overlay=0:0[vis];[vis][2:v]overlay=W-w-20:20[out]" \
+          -i logo.png \
+          -filter_complex "[0:a]showcqt=s=1280x720:fps=20:count=8[visual];[visual][1:v]overlay=W-w-20:20[out]" \
           -map "[out]" -map "0:a" -c:v libx264 -tune stillimage -b:v 1200k -pix_fmt yuv420p \
-          -c:a aac -b:a 128k -ar 44100 -f flv "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph" -report
+          -c:a aac -b:a 128k -ar 44100 -f flv "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph"
