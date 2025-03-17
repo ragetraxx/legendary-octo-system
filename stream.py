@@ -15,7 +15,7 @@ ffmpeg_cmd = [
     "-filter_complex",
     "[0:a]showspectrum=size=1280x720:mode=separate:color=intensity:scale=log:legend=0,format=rgba[viz];"  # Visualizer
     "[1:v]scale=1280:720[bg];"  # Scale background
-    "[2:v]scale=525:539[logo];"  # Scale logo
+    "[2:v]scale=500:500[logo];"  # Scale logo
     "[bg][viz]overlay=(W-w)/2:(H-h)/2[bgviz];"  # Overlay visualizer on background
     "[bgviz][logo]overlay=(W-w)/2:50[out]",  # Overlay logo
     "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-b:v", "1000k",
