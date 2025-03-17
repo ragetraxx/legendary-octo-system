@@ -19,6 +19,11 @@ jobs:
       - name: 🛠️ Install FFmpeg & Dependencies
         run: sudo apt update && sudo apt install -y ffmpeg curl jq
 
+      - name: 📝 Create Initial Metadata Files
+        run: |
+          echo "Loading..." > title.txt
+          echo "Rage Music PH" > artist.txt
+
       - name: 🎵 Create Metadata Update Script
         run: |
           cat << 'EOF' > update_metadata.sh
@@ -26,9 +31,9 @@ jobs:
             METADATA=$(ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" -f ffmetadata - 2>/dev/null | grep 'StreamTitle' | cut -d '=' -f2-)
             TITLE=$(echo "$METADATA" | cut -d '-' -f2- | xargs)
             ARTIST=$(echo "$METADATA" | cut -d '-' -f1 | xargs)
-            echo "$TITLE" > title.txt
-            echo "$ARTIST" > artist.txt
-            sleep 5  # Update every 5 seconds
+            [ -z "$TITLE" ] || echo "$TITLE" > title.txt
+            [ -z "$ARTIST" ] || echo "$ARTIST" > artist.txt
+            sleep 5
           done
           EOF
           chmod +x update_metadata.sh
