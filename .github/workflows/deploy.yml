@@ -25,7 +25,4 @@ jobs:
 
       - name: Run live stream script
         run: |
-          python stream.py &
-        env:
-          AUDIO_URL: "https://stream.zeno.fm/q1n2wyfs7x8uv"
-          RTMP_URL: "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph"
+          nohup python3 stream.py > stream.log 2>&1 &
