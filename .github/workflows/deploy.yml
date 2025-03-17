@@ -1,39 +1,45 @@
-name: Stream Live Digital Clock
+name: Stream to RTMP
 
 on:
-  push:
-  workflow_dispatch:
-  schedule:
-    - cron: "0 * * * *"
+push:
+branches:
+- main  # Runs when pushing to the main branch
+workflow_dispatch:  # Allows manual trigger
 
 jobs:
-  stream:
-    runs-on: ubuntu-latest
-    timeout-minutes: 360
+stream:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+steps:  
+  - name: Checkout repository  
+    uses: actions/checkout@v3  
 
-      - name: Install FFmpeg
-        run: sudo apt update && sudo apt install -y ffmpeg
+  - name: Install FFmpeg  
+    run: |  
+      sudo apt update  
+      sudo apt install -y ffmpeg  
+      ffmpeg -version  # Log installed version  
 
-      - name: Create Default Metadata Files
-        run: |
-          echo "Live Stream" > title.txt
-          echo "Rage Music PH" > artist.txt
+  - name: Verify Logo File Existence  
+    run: |  
+      if [[ -f logo.png ]]; then  
+        echo "✅ logo.png found."  
+      else  
+        echo "❌ ERROR: logo.png NOT FOUND!"  
+        exit 1  
+      fi  
 
-      - name: Stream Digital Clock with Audio Visualizer
-        run: |
-          ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" -i logo.png \
-            -fflags +nobuffer -flags low_delay -analyzeduration 1000000 -probesize 500000 \
-            -flvflags no_duration_filesize \
-            -filter_complex "[0:a]asplit[a1][a2]; \
-                             [a1]showcqt=s=1920x1080:fps=30:count=10:bar_g=5:sono_g=2[visual]; \
-                             [visual]drawtext=textfile=title.txt:fontsize=50:fontcolor=yellow:x=30:y=h-150[title]; \
-                             [title]drawtext=textfile=artist.txt:fontsize=40:fontcolor=yellow:x=30:y=h-90[final]; \
-                             [final][1:v]overlay=W/2-w/2:30[out]" \
-            -map "[out]" -map "[a2]" \
-            -c:v libx264 -preset ultrafast -b:v 2500k -maxrate 2500k -bufsize 10000k -g 15 -pix_fmt yuv420p \
-            -c:a aac -b:a 128k -ar 44100 \
-            -f flv -rtmp_live live "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph"
+  - name: Start FFmpeg Stream  
+    run: |  
+      echo "🚀 Starting FFmpeg stream..."  
+      ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" \  
+      -i logo.png \  
+      -filter_complex "[0:a]showcqt=s=1280x720:fps=20:count=8[visual];[visual][1:v]overlay=W-w-20:20[out]" \  
+      -map "[out]" -map "0:a" \  
+      -c:v libx264 -tune stillimage -b:v 1200k -maxrate 1200k -bufsize 1200k -g 50 -pix_fmt yuv420p \  
+      -c:a aac -b:a 128k -ar 44100 \  
+      -f flv "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph" \  
+      -loglevel verbose
+
+can you add on top left artist and title of the current song played on zeno link
+
