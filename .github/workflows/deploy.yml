@@ -6,7 +6,7 @@ on:
       - main
   schedule:
     - cron: '0 */6 * * *'  # Runs every 6 hours
-  workflow_dispatch:  # Allows manual trigger
+  workflow_dispatch:
 
 jobs:
   stream:
@@ -16,16 +16,33 @@ jobs:
       - name: 🚀 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🛠️ Install FFmpeg
-        run: sudo apt update && sudo apt install -y ffmpeg
+      - name: 🛠️ Install FFmpeg & Dependencies
+        run: sudo apt update && sudo apt install -y ffmpeg curl jq
 
-      - name: 🎵 Start FFmpeg Stream for 6 Hours
+      - name: 🎵 Create Script to Fetch Metadata
+        run: |
+          cat << 'EOF' > update_metadata.sh
+          while true; do
+            METADATA=$(ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" -f ffmetadata - 2>/dev/null | grep 'StreamTitle' | cut -d '=' -f2-)
+            TITLE=$(echo "$METADATA" | cut -d '-' -f2- | xargs)
+            ARTIST=$(echo "$METADATA" | cut -d '-' -f1 | xargs)
+            echo "$TITLE" > title.txt
+            echo "$ARTIST" > artist.txt
+            sleep 10  # Update every 10 seconds
+          done
+          EOF
+          chmod +x update_metadata.sh
+
+      - name: 🔄 Start Metadata Update in Background
+        run: nohup ./update_metadata.sh &
+
+      - name: 🎥 Start FFmpeg Stream for 6 Hours
         run: |
           timeout 6h ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" -i logo.png \
           -filter_complex "[0:a]asplit[a1][a2]; \
                            [a1]showcqt=s=1920x1080:fps=60:count=10:bar_g=5:sono_g=2[visual]; \
-                           [visual]drawtext=textfile=<(ffmpeg -re -i 'https://stream.zeno.fm/q1n2wyfs7x8uv' -f ffmetadata - 2>/dev/null | grep 'StreamTitle' | cut -d '=' -f2 | cut -d '-' -f2- | xargs):fontsize=50:fontcolor=yellow:x=30:y=h-150[title]; \
-                           [title]drawtext=textfile=<(ffmpeg -re -i 'https://stream.zeno.fm/q1n2wyfs7x8uv' -f ffmetadata - 2>/dev/null | grep 'StreamTitle' | cut -d '=' -f2 | cut -d '-' -f1 | xargs):fontsize=40:fontcolor=yellow:x=30:y=h-90[final]; \
+                           [visual]drawtext=textfile=title.txt:fontsize=50:fontcolor=yellow:x=30:y=h-150[title]; \
+                           [title]drawtext=textfile=artist.txt:fontsize=40:fontcolor=yellow:x=30:y=h-90[final]; \
                            [final][1:v]overlay=W/2-w/2:30[out]" \
           -map "[out]" -map "[a2]" \
           -c:v libx264 -preset ultrafast -tune film -b:v 4500k -maxrate 4500k -bufsize 5000k -g 30 -pix_fmt yuv420p \
