@@ -4,12 +4,12 @@ on:
   push:
   workflow_dispatch:
   schedule:
-    - cron: "0 * * * *"  # Runs every hour
+    - cron: "0 * * * *"
 
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 hours timeout
+    timeout-minutes: 360
 
     steps:
       - name: Checkout repository
@@ -17,6 +17,11 @@ jobs:
 
       - name: Install FFmpeg
         run: sudo apt update && sudo apt install -y ffmpeg
+
+      - name: Create Default Metadata Files
+        run: |
+          echo "Live Stream" > title.txt
+          echo "Rage Music PH" > artist.txt
 
       - name: Stream Digital Clock with Audio Visualizer
         run: |
