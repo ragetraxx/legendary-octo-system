@@ -24,6 +24,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Run live stream script
+      - name: Run live stream script in the background
         run: |
           nohup python3 stream.py > stream.log 2>&1 &
+          sleep infinity  # Keeps GitHub Actions running forever
