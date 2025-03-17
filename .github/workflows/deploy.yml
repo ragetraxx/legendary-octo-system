@@ -1,61 +1,41 @@
-name: Rage Music PH Stream
+name: Rage Music PH Live Stream
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:  # Allows manual start
   schedule:
-    - cron: '0 */6 * * *'  # Runs every 6 hours
-  workflow_dispatch:
+    - cron: "0 */6 * * *"  # Runs every 6 hours
 
 jobs:
   stream:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🚀 Checkout Repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🛠️ Install FFmpeg & Dependencies
-        run: sudo apt update && sudo apt install -y ffmpeg curl jq
+      - name: Install FFmpeg
+        run: sudo apt update && sudo apt install -y ffmpeg
 
-      - name: 📝 Create Initial Metadata Files
+      - name: Generate Metadata Files
         run: |
-          echo "Loading..." > title.txt
-          echo "Rage Music PH" > artist.txt
-
-      - name: 🎵 Create Metadata Update Script
-        run: |
-          cat << 'EOF' > update_metadata.sh
+          touch title.txt artist.txt
           while true; do
-            METADATA=$(ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" -f ffmetadata - 2>/dev/null | grep 'StreamTitle' | cut -d '=' -f2-)
-            TITLE=$(echo "$METADATA" | cut -d '-' -f2- | xargs)
-            ARTIST=$(echo "$METADATA" | cut -d '-' -f1 | xargs)
-            [ -z "$TITLE" ] || echo "$TITLE" > title.txt
-            [ -z "$ARTIST" ] || echo "$ARTIST" > artist.txt
+            metadata=$(ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" -f ffmetadata - 2>/dev/null)
+            echo "$metadata" | grep 'StreamTitle' | cut -d '=' -f2 | cut -d '-' -f2- | xargs > title.txt
+            echo "$metadata" | grep 'StreamTitle' | cut -d '=' -f2 | cut -d '-' -f1 | xargs > artist.txt
             sleep 5
-          done
-          EOF
-          chmod +x update_metadata.sh
+          done &
 
-      - name: 🔄 Start Metadata Update in Background
-        run: nohup ./update_metadata.sh &
-
-      - name: 🎥 Start FFmpeg Stream (6 Hours)
+      - name: Start Streaming
         run: |
           timeout 6h ffmpeg -re -i "https://stream.zeno.fm/q1n2wyfs7x8uv" -i logo.png \
-          -fflags nobuffer -flags low_delay -analyzeduration 5000000 \
-          -filter_complex "[0:a]asplit[a1][a2]; \
-                           [a1]showcqt=s=1920x1080:fps=60:count=10:bar_g=5:sono_g=2[visual]; \
-                           [visual]drawtext=fontsize=50:fontcolor=yellow:x=30:y=h-150:textfile=title.txt[title]; \
-                           [title]drawtext=fontsize=40:fontcolor=yellow:x=30:y=h-90:textfile=artist.txt[final]; \
-                           [final][1:v]overlay=W/2-w/2:30[out]" \
-          -map "[out]" -map "[a2]" \
-          -c:v libx264 -preset ultrafast -tune film -b:v 4500k -maxrate 4500k -bufsize 15000k -g 30 -pix_fmt yuv420p \
-          -c:a aac -b:a 192k -ar 44100 \
-          -f flv -rtmp_live live "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph"
-
-      - name: 🔄 Restart Workflow
-        run: gh workflow run radio-stream.yml
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            -fflags nobuffer -flags low_delay -analyzeduration 1000000 -probesize 500000 \
+            -filter_complex "[0:a]asplit[a1][a2]; \
+                             [a1]showcqt=s=1920x1080:fps=30:count=10:bar_g=5:sono_g=2[visual]; \
+                             [visual]drawtext=fontsize=50:fontcolor=yellow:x=30:y=h-150:textfile=title.txt[title]; \
+                             [title]drawtext=fontsize=40:fontcolor=yellow:x=30:y=h-90:textfile=artist.txt[final]; \
+                             [final][1:v]overlay=W/2-w/2:30[out]" \
+            -map "[out]" -map "[a2]" \
+            -c:v libx264 -preset ultrafast -b:v 3500k -maxrate 3500k -bufsize 7000k -g 20 -pix_fmt yuv420p \
+            -c:a aac -b:a 128k -ar 44100 \
+            -f flv -rtmp_live live "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph"
