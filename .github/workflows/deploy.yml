@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
   deploy:
@@ -24,6 +24,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Run live stream script with auto-restart
+      - name: Run live stream script
         run: |
-          while true; do python3 stream.py; sleep 5; done
+          nohup python3 stream.py > stream.log 2>&1 &
