@@ -6,7 +6,7 @@ rtmp_url = "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph"
 background_img = "background.png"
 logo_img = "logo.png"
 
-# FFmpeg command with background, visualizer, and logo
+# FFmpeg command with slower rotating logo
 ffmpeg_cmd = [
     "ffmpeg",
     "-re", "-i", audio_url,
@@ -15,9 +15,9 @@ ffmpeg_cmd = [
     "-filter_complex",
     "[0:a]showspectrum=size=1280x720:mode=separate:color=intensity:scale=log:legend=0,format=rgba[viz];"  # Visualizer
     "[1:v]scale=1280:720[bg];"  # Scale background
-    "[2:v]scale=500:500[logo];"  # Scale logo
+    "[2:v]scale=500:500,rotate=2*PI*t/60:c=none[logo];"  # Rotate logo (1 full turn per 60s)
     "[bg][viz]overlay=(W-w)/2:(H-h)/2[bgviz];"  # Overlay visualizer on background
-    "[bgviz][logo]overlay=(W-w)/2:50[out]",  # Overlay logo
+    "[bgviz][logo]overlay=(W-w)/2:50[out]",  # Overlay rotating logo
     "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-b:v", "1000k",
     "-map", "0:a", "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
     "-f", "flv", rtmp_url
