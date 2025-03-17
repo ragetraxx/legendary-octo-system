@@ -37,8 +37,8 @@ jobs:
             ARTIST=$(echo "$METADATA" | jq -r '.title' | cut -d '-' -f1 | xargs)
 
             echo "🎵 Now Playing: $ARTIST - $SONG_TITLE"
-            echo "metadata_title='$SONG_TITLE'" > metadata.txt
-            echo "metadata_artist='$ARTIST'" >> metadata.txt
+            echo "$SONG_TITLE" > title.txt
+            echo "$ARTIST" > artist.txt
 
             sleep 5  # Update metadata every 5 seconds
           done &
@@ -50,8 +50,8 @@ jobs:
           -i logo.png \
           -filter_complex "[0:a]showcqt=s=1280x720:fps=20:count=8[visual]; \
                            [visual][1:v]overlay=W-w-20:20[bg]; \
-                           drawtext=textfile=metadata.txt:text='%{metadata_title}':fontsize=30:fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:x=10:y=10, \
-                           drawtext=textfile=metadata.txt:text='%{metadata_artist}':fontsize=26:fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:x=10:y=50" \
+                           drawtext=textfile=title.txt:fontsize=30:fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:x=10:y=10, \
+                           drawtext=textfile=artist.txt:fontsize=26:fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:x=10:y=50" \
           -map "[bg]" -map "0:a" \
           -c:v libx264 -tune stillimage -b:v 1200k -maxrate 1200k -bufsize 1200k -g 50 -pix_fmt yuv420p \
           -c:a aac -b:a 128k -ar 44100 \
