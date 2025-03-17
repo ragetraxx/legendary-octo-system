@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Allows manual trigger
 
 jobs:
   deploy:
@@ -24,7 +23,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Run live stream script in the background
+      - name: Ensure background & logo exist
+        run: |
+          if [ ! -f background.png ] || [ ! -f logo.png ]; then
+            echo "Error: background.png or logo.png is missing!"
+            exit 1
+          fi
+
+      - name: Run live stream script
         run: |
           nohup python3 stream.py > stream.log 2>&1 &
-          sleep infinity  # Keeps GitHub Actions running forever
