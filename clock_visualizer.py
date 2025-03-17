@@ -7,6 +7,7 @@ import pyaudio
 import wave
 import struct
 import math
+import subprocess
 
 # Constants
 WIDTH, HEIGHT = 1920, 1080  # 1080p resolution
@@ -23,9 +24,10 @@ for y in range(HEIGHT):
 
 # Load logo
 logo = cv2.imread(LOGO_PATH, cv2.IMREAD_UNCHANGED)
-logo_height, logo_width = logo.shape[:2]
-logo_x = (WIDTH - logo_width) // 2
-logo_y = 50  # Position logo at the top
+if logo is not None:
+    logo_height, logo_width = logo.shape[:2]
+    logo_x = (WIDTH - logo_width) // 2
+    logo_y = 50  # Position logo at the top
 
 # Audio setup
 CHUNK = 1024
@@ -55,6 +57,27 @@ def draw_visualizer(frame, volume):
         y = int(CENTER_Y + radius * math.sin(angle))
         cv2.circle(frame, (x, y), int(10 + volume * 20), (0, 255, 0), -1)
 
+# Start FFmpeg streaming
+ffmpeg_command = [
+    "ffmpeg",
+    "-y",
+    "-f", "rawvideo",
+    "-vcodec", "rawvideo",
+    "-s", f"{WIDTH}x{HEIGHT}",
+    "-pix_fmt", "bgr24",
+    "-r", "30",
+    "-i", "-",
+    "-c:v", "libx264",
+    "-preset", "ultrafast",
+    "-tune", "zerolatency",
+    "-b:v", "2000k",
+    "-g", "30",
+    "-f", "flv",
+    "rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph"
+]
+
+ffmpeg_process = subprocess.Popen(ffmpeg_command, stdin=subprocess.PIPE)
+
 # Main loop
 while True:
     frame = gradient.copy()
@@ -74,13 +97,13 @@ while True:
     if logo is not None:
         frame[logo_y:logo_y + logo_height, logo_x:logo_x + logo_width] = logo[:, :, :3]
 
-    # Display output
-    cv2.imshow("Live Clock", frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
+    # Send frame to FFmpeg
+    ffmpeg_process.stdin.write(frame.tobytes())
 
 # Cleanup
 stream.stop_stream()
 stream.close()
 audio.terminate()
+ffmpeg_process.stdin.close()
+ffmpeg_process.wait()
 cv2.destroyAllWindows()
