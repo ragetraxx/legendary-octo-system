@@ -1,0 +1,28 @@
+name: Live Digital Clock Stream
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y ffmpeg python3 python3-pip
+          pip install opencv-python numpy ffmpeg-python pyaudio
+
+      - name: Run Live Clock Script
+        run: |
+          python3 clock_visualizer.py | ffmpeg -f rawvideo -pixel_format bgr24 -video_size 1920x1080 -framerate 30 -i - \
+            -i "https://stream.zeno.fm/q1n2wyfs7x8uv" -c:v libx264 -preset ultrafast -b:v 3000k -g 60 \
+            -c:a aac -b:a 128k -strict experimental -f flv \
+            "rtmp://ssh101stream.ssh101.com/akamaissh101/ssh101/ragemusicph/playlist.m3u8"
