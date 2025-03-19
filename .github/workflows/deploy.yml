@@ -31,6 +31,8 @@ jobs:
           sudo apt-get install -y ffmpeg
 
       - name: Run live stream script
+        env:
+          RTMP_URL: ${{ secrets.RTMP_URL }}  # Inject RTMP URL from GitHub Secrets
         run: |
           nohup python3 stream.py > stream.log 2>&1 &
           echo "Stream started at $(date)" >> stream.log
