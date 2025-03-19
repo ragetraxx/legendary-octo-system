@@ -2,7 +2,12 @@
 
 # Configuration
 AUDIO_URL="https://stream.zeno.fm/q1n2wyfs7x8uv"
-RTMP_URL="rtmp://ssh101.bozztv.com:1935/ssh101/ragemusicph"
+RTMP_URL=${RTMP_URL:-""}  # Get RTMP URL from environment variable
+
+if [[ -z "$RTMP_URL" ]]; then
+    echo "Error: RTMP_URL environment variable is not set."
+    exit 1
+fi
 
 # Start FFmpeg with improved buffer settings and error handling
 ffmpeg -re -i "$AUDIO_URL" \
