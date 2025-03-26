@@ -11,18 +11,18 @@ if not rtmp_url:
     print("Error: RTMP_URL environment variable is not set.")
     exit(1)
 
-# FFmpeg command with slower rotating logo
+# FFmpeg command with spiral visualizer and rotating logo
 ffmpeg_cmd = [
     "ffmpeg",
     "-re", "-i", audio_url,
     "-loop", "1", "-i", background_img,  # Background
     "-i", logo_img,  # Logo
     "-filter_complex",
-    "[0:a]showspectrum=size=1280x720:mode=separate:color=intensity:scale=log:legend=0,format=rgba[viz];"
+    "[0:a]avectorscope=s=1280x720:r=30:rc=0.5:gc=0.8:bc=1:zoom=1.5,rotate=PI*t/5,format=rgba[viz];"
     "[1:v]scale=1280:720[bg];"
-    "[2:v]scale=500:500,rotate=2*PI*t/60:c=none[logo];"
-    "[bg][viz]overlay=(W-w)/2:(H-h)/2[bgviz];"
-    "[bgviz][logo]overlay=(W-w)/2:50[out]",
+    "[2:v]scale=500:500,rotate=2*PI*t/5:c=none[logo];"
+    "[bg][viz]overlay=W/2-w/2:H/2-h/2[bgviz];"
+    "[bgviz][logo]overlay=W/2-w/2:50[out]",
     "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-b:v", "1000k",
     "-map", "0:a", "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
     "-f", "flv", rtmp_url
