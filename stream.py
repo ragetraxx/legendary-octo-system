@@ -11,28 +11,32 @@ if not rtmp_url:
     print("Error: RTMP_URL environment variable is not set.")
     exit(1)
 
-# FFmpeg command with optimizations for lower buffer
+# FFmpeg command with real-time optimizations
 ffmpeg_cmd = [
     "ffmpeg",
     "-re", "-i", audio_url,  # Read audio in real-time
     "-loop", "1", "-i", background_img,  # Background
     "-i", logo_img,  # Logo
-    "-probesize", "32", "-analyzeduration", "0", "-fflags", "nobuffer",  # Lower latency
+    # **Super Low Latency Settings**
+    "-fflags", "nobuffer", "-flags", "low_delay",  # Remove buffering
+    "-strict", "experimental",  # Allow real-time optimizations
+    "-probesize", "16", "-analyzeduration", "0",  # Minimize delay in analyzing input
     "-filter_complex",
     # Spiral visualizer with smooth color transitions
     "[0:a]avectorscope=s=1280x720:r=30:rc=1:gc=1:bc=1:zoom=1.5,rotate=PI*t/5,format=rgba[viz];"
-    "[viz]eq=saturation=2.5,curves=r='0/1 0.5/0.5 1/0':g='0/0 0.5/1 1/0':b='0/0 0.5/0 1/1'[vizcolor];"
+    "[viz]hue='H=2*t*50':s=2.5:b=1.5[vizcolor];"  # Dynamic color shift
     # Background and scaling
     "[1:v]scale=1280:720[bg];"
     # Rotating logo effect (like a CD)
-    "[2:v]scale=500:500,rotate=2*PI*t/5:c=none[logo];"
+    "[2:v]scale=500:500,rotate=2*PI*t/3:c=none[logo];"
     # Overlay effects
     "[bg][vizcolor]overlay=W/2-w/2:H/2-h/2[bgviz];"
     "[bgviz][logo]overlay=W/2-w/2:50[out]",
-    # Video encoding optimizations
+    # **Real-time Encoding Settings**
     "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-b:v", "1000k",
-    "-g", "25",  # Low keyframe interval to reduce delay
-    "-map", "0:a", "-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-af", "asetpts=PTS-STARTPTS",
+    "-g", "25", "-r", "30",  # Low keyframe interval, real-time FPS
+    "-map", "0:a", "-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-af", "aresample=async=1",
+    "-bufsize", "500k",  # Reduce buffer size for smooth real-time streaming
     "-f", "flv", rtmp_url
 ]
 
