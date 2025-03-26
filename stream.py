@@ -11,16 +11,17 @@ if not rtmp_url:
     print("Error: RTMP_URL environment variable is not set.")
     exit(1)
 
-# FFmpeg command with spiral visualizer, color effects, and rotating logo
+# FFmpeg command with optimizations for lower buffer
 ffmpeg_cmd = [
     "ffmpeg",
-    "-re", "-i", audio_url,
+    "-re", "-i", audio_url,  # Read audio in real-time
     "-loop", "1", "-i", background_img,  # Background
     "-i", logo_img,  # Logo
+    "-probesize", "32", "-analyzeduration", "0", "-fflags", "nobuffer",  # Lower latency
     "-filter_complex",
-    # Spiral visualizer with color shifting
-    "[0:a]avectorscope=s=1280x720:r=30:rc=0.5:gc=0.8:bc=1:zoom=1.5,rotate=PI*t/5,format=rgba[viz];"
-    "[viz]hue=h=2*t*50:s=1.5:b=1.2[vizcolor];"  # Dynamic hue shift for color effects
+    # Spiral visualizer with smooth color transitions
+    "[0:a]avectorscope=s=1280x720:r=30:rc=1:gc=1:bc=1:zoom=1.5,rotate=PI*t/5,format=rgba[viz];"
+    "[viz]eq=saturation=2.5,curves=r='0/1 0.5/0.5 1/0':g='0/0 0.5/1 1/0':b='0/0 0.5/0 1/1'[vizcolor];"
     # Background and scaling
     "[1:v]scale=1280:720[bg];"
     # Rotating logo effect (like a CD)
@@ -28,9 +29,10 @@ ffmpeg_cmd = [
     # Overlay effects
     "[bg][vizcolor]overlay=W/2-w/2:H/2-h/2[bgviz];"
     "[bgviz][logo]overlay=W/2-w/2:50[out]",
-    # Output settings
+    # Video encoding optimizations
     "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-b:v", "1000k",
-    "-map", "0:a", "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
+    "-g", "25",  # Low keyframe interval to reduce delay
+    "-map", "0:a", "-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-af", "asetpts=PTS-STARTPTS",
     "-f", "flv", rtmp_url
 ]
 
