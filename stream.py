@@ -14,7 +14,7 @@ if not rtmp_url:
 ffmpeg_cmd = [
     "ffmpeg",
     "-re", "-i", audio_url,
-    "-loop", "1", "-i", background_img",  # Background
+    "-loop", "1", "-i", background_img,  # Background
     "-i", logo_img,  # Logo
     "-filter_complex",
     # 1. High-Quality Circular Spectrum Visualizer
@@ -23,11 +23,11 @@ ffmpeg_cmd = [
     "[1:v]scale=1280:720[bg];"
     # 3. Overlay visualizer centered on background
     "[bg][spectrum]overlay=(W-w)/2:(H-h)/2[bgviz];"
-    # 4. Make the logo bounce on every edge smoothly
+    # 4. Ensure Logo Bounce Works Properly
     "[2:v]scale=200:200[logo];"
     "[bgviz][logo]overlay="
-    "x='mod(300*t, W-200)':"
-    "y='mod(200*t, H-200)'[out]",
+    "x='mod(200*t, W-200)':"
+    "y='mod(150*t, H-200)'[out]",
     "-map", "[out]", "-map", "0:a",
     "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
     "-b:v", "2000k",
@@ -35,13 +35,14 @@ ffmpeg_cmd = [
     "-f", "flv", rtmp_url
 ]
 
-# Run FFmpeg with logging
+# Run FFmpeg with Debug Logging
 try:
     with open("ffmpeg_output.log", "w") as log_file:
+        print("Starting FFmpeg stream...")
         process = subprocess.Popen(ffmpeg_cmd, stderr=log_file, stdout=log_file)
-        print("FFmpeg stream started.")
+        print("FFmpeg process started.")
         process.wait()
 except FileNotFoundError:
-    print("Error: FFmpeg not found. Ensure it is installed and in your PATH.")
+    print("Error: FFmpeg not found. Ensure it is installed and in your GitHub workflow.")
 except Exception as e:
     print(f"An unexpected error occurred: {e}")
