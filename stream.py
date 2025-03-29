@@ -11,27 +11,32 @@ if not rtmp_url:
     print("Error: RTMP_URL environment variable is not set.")
     exit(1)
 
-# FFmpeg command with realistic bouncing logo and circular color-changing visualizer
+# FFmpeg command:
+# - The audio is visualized using avectorscope (a circular visualizer),
+#   piped through the hue filter to cycle colors every 15 seconds.
+# - The background is scaled to 1280x720.
+# - The logo is scaled to 200x200.
+# - The visualizer is overlaid centered on the background.
+# - Finally, the logo is overlaid with a bouncing effect using mod() and abs()
 ffmpeg_cmd = [
     "ffmpeg",
     "-re", "-i", audio_url,
-    "-loop", "1", "-i", background_img,  # Background
-    "-i", logo_img,  # Logo
+    "-loop", "1", "-i", background_img,  # Background input
+    "-i", logo_img,  # Logo input
     "-filter_complex",
-    # Circular visualizer with color change every 15s
-    "[0:a]avectorscope=s=720x720:r=30,"
-    "geq=r='sin(PI*t/15)*255':g='cos(PI*t/15)*255':b='sin(2*PI*t/15)*255',"
-    "format=rgba[viz];"
+    # Create circular visualizer and change hue over time
+    "[0:a]avectorscope=s=720x720:r=30,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
     # Scale background and logo
     "[1:v]scale=1280:720[bg];"
     "[2:v]scale=200:200[logo];"
-    # Combine background and visualizer
+    # Overlay visualizer on the center of the background
     "[bg][viz]overlay=(W-w)/2:(H-h)/2[bgviz];"
-    # Bouncing logo effect with real reflections
+    # Overlay bouncing logo on top; logo bounces off all screen edges
     "[bgviz][logo]overlay="
-    "x='W/2 + (W/2-200) * sin(2*PI*t/3)':"
-    "y='H/2 + (H/2-200) * cos(2*PI*t/4)'[out]",
-    "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-b:v", "1000k",
+    "x='abs(mod(200*t, (W-w)*2) - (W-w))':"
+    "y='abs(mod(150*t, (H-h)*2) - (H-h))'[out]",
+    "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast",
+    "-tune", "zerolatency", "-b:v", "1000k",
     "-map", "0:a", "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
     "-f", "flv", rtmp_url
 ]
