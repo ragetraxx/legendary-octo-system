@@ -18,21 +18,16 @@ ffmpeg_cmd = [
     "-i", logo_img,  # Logo
     "-filter_complex",
     # 1. Circular spectrum visualizer with color cycling every 15 seconds
-    "[0:a]showspectrum=s=720x720:mode=polar:color=rainbow:r=30,format=rgba,"
+    "[0:a]showspectrum=size=720x720:mode=polar:color=rainbow:legend=0:scale=log,format=rgba,"
     "hue=h='mod(360*t/15,360)'[spectrum];"
     # 2. Expanding & contracting effect (pulsating effect)
     "[spectrum]scale=w=720*(1+0.3*sin(2*PI*t/2)):h=720*(1+0.3*sin(2*PI*t/2)):eval=frame[pulsating_spectrum];"
-    # 3. Radial waves reacting to the music
-    "[0:a]avectorscope=s=720x720:r=30:draw=line:scale=sqrt,format=rgba,"
-    "hue=h='mod(360*t/10,360)'[waves];"
-    # 4. Combine spectrum and waves
-    "[pulsating_spectrum][waves]blend=all_mode=lighten[visualizer];"
-    # 5. Scale background and logo
+    # 3. Scale background and logo
     "[1:v]scale=1280:720[bg];"
     "[2:v]scale=200:200[logo];"
-    # 6. Overlay the visualizer at the center of the background
-    "[bg][visualizer]overlay=x='(W-w)/2':y='(H-h)/2'[bgviz];"
-    # 7. Make the logo bounce off the edges dynamically
+    # 4. Overlay the pulsating visualizer centered on the background
+    "[bg][pulsating_spectrum]overlay=(W-w)/2:(H-h)/2[bgviz];"
+    # 5. Make the logo bounce dynamically off the edges
     "[bgviz][logo]overlay="
     "x='abs(mod(300*t, (W-w)*2) - (W-w))':"
     "y='abs(mod(200*t, (H-h)*2) - (H-h))'[out]",
