@@ -12,26 +12,26 @@ if not rtmp_url:
     exit(1)
 
 # FFmpeg command:
-# - The audio is visualized using avectorscope (a circular visualizer),
-#   piped through the hue filter to cycle colors every 15 seconds.
-# - The background is scaled to 1280x720.
-# - The logo is scaled to 200x200.
-# - The visualizer is overlaid centered on the background.
-# - Finally, the logo is overlaid with a bouncing effect using mod() and abs()
+# - The audio is visualized with a circular avectorscope.
+# - Hue cycles every 15 seconds.
+# - The visualizer expands/contrasts over time.
+# - The background and logo are scaled, and the logo bounces off every screen edge.
 ffmpeg_cmd = [
     "ffmpeg",
     "-re", "-i", audio_url,
     "-loop", "1", "-i", background_img,  # Background input
     "-i", logo_img,  # Logo input
     "-filter_complex",
-    # Create circular visualizer and change hue over time
+    # Create circular visualizer and cycle hue every 15 seconds
     "[0:a]avectorscope=s=720x720:r=30,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
+    # Expand the visualizer over time
+    "[viz]scale=w=720*(1+0.5*sin(2*PI*t/15)):h=720*(1+0.5*sin(2*PI*t/15))[exp_viz];"
     # Scale background and logo
     "[1:v]scale=1280:720[bg];"
     "[2:v]scale=200:200[logo];"
-    # Overlay visualizer on the center of the background
-    "[bg][viz]overlay=(W-w)/2:(H-h)/2[bgviz];"
-    # Overlay bouncing logo on top; logo bounces off all screen edges
+    # Overlay the expanded visualizer on the center of the background
+    "[bg][exp_viz]overlay=x='(W-w)/2':y='(H-h)/2'[bgviz];"
+    # Overlay the bouncing logo on top; the logo bounces off all screen edges
     "[bgviz][logo]overlay="
     "x='abs(mod(200*t, (W-w)*2) - (W-w))':"
     "y='abs(mod(150*t, (H-h)*2) - (H-h))'[out]",
