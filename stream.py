@@ -17,20 +17,19 @@ ffmpeg_cmd = [
     "-loop", "1", "-i", background_img,  # Background
     "-i", logo_img,  # Logo
     "-filter_complex",
-    # 1. Circular spectrum visualizer with color cycling every 15 seconds
-    "[0:a]showspectrum=size=720x720:mode=polar:color=rainbow:legend=0:scale=log,format=rgba,"
-    "hue=h='mod(360*t/15,360)'[spectrum];"
-    # 2. Expanding & contracting effect (pulsating effect)
-    "[spectrum]scale=w=720*(1+0.3*sin(2*PI*t/2)):h=720*(1+0.3*sin(2*PI*t/2)):eval=frame[pulsating_spectrum];"
+    # 1. Circular spectrum with smooth color transitions
+    "[0:a]showspectrum=size=720x720:mode=polar:color=rainbow:legend=0:scale=log,format=rgba[spectrum];"
+    # 2. Expanding & contracting effect (pulsation effect)
+    "[spectrum]scale=w=720*(1+0.2*sin(2*PI*t/2)):h=720*(1+0.2*sin(2*PI*t/2)):eval=frame[pulsating_spectrum];"
     # 3. Scale background and logo
     "[1:v]scale=1280:720[bg];"
     "[2:v]scale=200:200[logo];"
-    # 4. Overlay the pulsating visualizer centered on the background
+    # 4. Overlay the visualizer centered on the background
     "[bg][pulsating_spectrum]overlay=(W-w)/2:(H-h)/2[bgviz];"
-    # 5. Make the logo bounce dynamically off the edges
+    # 5. Make the logo bounce smoothly
     "[bgviz][logo]overlay="
-    "x='abs(mod(300*t, (W-w)*2) - (W-w))':"
-    "y='abs(mod(200*t, (H-h)*2) - (H-h))'[out]",
+    "x='W/2 + (W/3) * sin(2*PI*t/3)':"
+    "y='H/2 + (H/3) * cos(2*PI*t/3)'[out]",
     "-map", "[out]", "-map", "0:a",
     "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
     "-b:v", "2000k",
