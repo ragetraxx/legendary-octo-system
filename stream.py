@@ -3,7 +3,7 @@ import os
 
 # Configuration
 audio_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"
-rtmp_url = os.getenv("RTMP_URL")  # RTMP URL must be set in your environment
+rtmp_url = os.getenv("RTMP_URL")  # RTMP URL from environment variable
 background_img = "background.png"
 logo_img = "logo.png"
 
@@ -11,37 +11,42 @@ if not rtmp_url:
     print("Error: RTMP_URL environment variable is not set.")
     exit(1)
 
-# Build filter_complex:
-# 1. Generate a 300x300 spectrum visualizer (rainbow-colored) from the audio.
-# 2. Scale logo.png to 300x300 and ensure it is in rgba format.
-# 3. Blend the logo and the spectrum using multiply mode so that the logo shape acts as a mask.
-# 4. Scale the background to 1280x720.
-# 5. Overlay the blended visualizer centered on the background.
-filter_complex = (
-    "[0:a]showspectrum=s=300x300:mode=bar:color=rainbow,format=rgba[spectrum];"
-    "[2:v]scale=300:300,format=rgba[logo];"
-    "[logo][spectrum]blend=all_mode=multiply[vis];"
-    "[1:v]scale=1280:720[bg];"
-    "[bg][vis]overlay=(W-w)/2:(H-h)/2[output]"
-)
-
 ffmpeg_cmd = [
     "ffmpeg",
     "-re", "-i", audio_url,
-    "-loop", "1", "-i", background_img,
-    "-i", logo_img,
-    "-filter_complex", filter_complex,
-    "-map", "[output]",
-    "-map", "0:a",
+    "-loop", "1", "-i", background_img,  # Background
+    "-i", logo_img,  # Logo
+    "-filter_complex",
+    # 1. Circular spectrum visualizer with color cycling every 15 seconds
+    "[0:a]showspectrum=s=720x720:mode=polar:color=rainbow:r=30,format=rgba,"
+    "hue=h='mod(360*t/15,360)'[spectrum];"
+    # 2. Expanding & contracting effect (pulsating effect)
+    "[spectrum]scale=w=720*(1+0.3*sin(2*PI*t/2)):h=720*(1+0.3*sin(2*PI*t/2)):eval=frame[pulsating_spectrum];"
+    # 3. Radial waves reacting to the music
+    "[0:a]avectorscope=s=720x720:r=30:draw=line:scale=sqrt,format=rgba,"
+    "hue=h='mod(360*t/10,360)'[waves];"
+    # 4. Combine spectrum and waves
+    "[pulsating_spectrum][waves]blend=all_mode=lighten[visualizer];"
+    # 5. Scale background and logo
+    "[1:v]scale=1280:720[bg];"
+    "[2:v]scale=200:200[logo];"
+    # 6. Overlay the visualizer at the center of the background
+    "[bg][visualizer]overlay=x='(W-w)/2':y='(H-h)/2'[bgviz];"
+    # 7. Make the logo bounce off the edges dynamically
+    "[bgviz][logo]overlay="
+    "x='abs(mod(300*t, (W-w)*2) - (W-w))':"
+    "y='abs(mod(200*t, (H-h)*2) - (H-h))'[out]",
+    "-map", "[out]", "-map", "0:a",
     "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
-    "-b:v", "1500k",
+    "-b:v", "2000k",
     "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
     "-f", "flv", rtmp_url
 ]
 
+# Run FFmpeg with logging
 try:
     with open("ffmpeg_output.log", "w") as log_file:
-        process = subprocess.Popen(ffmpeg_cmd, stdout=log_file, stderr=log_file)
+        process = subprocess.Popen(ffmpeg_cmd, stderr=log_file, stdout=log_file)
         print("FFmpeg stream started.")
         process.wait()
 except FileNotFoundError:
