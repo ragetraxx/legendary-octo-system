@@ -1,75 +1,45 @@
 import subprocess
 import os
-import requests
-import re
-import time
-import threading
 
 # Configuration
 audio_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"
 rtmp_url = os.getenv("RTMP_URL")  # Get RTMP URL from environment variable
 background_img = "background.png"
 logo_img = "logo.png"
-metadata_file = "metadata.txt"  # Temp file to update metadata
 
 if not rtmp_url:
     print("Error: RTMP_URL environment variable is not set.")
     exit(1)
 
-def get_metadata():
-    """Fetches metadata from the audio stream."""
-    try:
-        headers = {"Icy-MetaData": "1"}
-        response = requests.get(audio_url, headers=headers, stream=True, timeout=5)
-        
-        if "icy-metaint" in response.headers:
-            metaint = int(response.headers["icy-metaint"])
-            stream = response.raw
-            stream.read(metaint)  # Skip to metadata
-            metadata_length = ord(stream.read(1)) * 16
-            
-            if metadata_length > 0:
-                metadata = stream.read(metadata_length).decode("utf-8", errors="ignore")
-                match = re.search(r"StreamTitle='(.*?)';", metadata)
-                if match:
-                    return match.group(1)
-    except Exception as e:
-        print(f"Error fetching metadata: {e}")
-    return "Unknown Track"
-
-def update_metadata():
-    """Continuously updates metadata text file in real time."""
-    last_track = ""
-    while True:
-        track_info = get_metadata()
-        if track_info != last_track:  # Only update if changed
-            with open(metadata_file, "w") as f:
-                f.write(track_info)
-            last_track = track_info
-        time.sleep(3)  # Update every 3 seconds for real-time display
-
-# Start metadata updating in a separate thread
-threading.Thread(target=update_metadata, daemon=True).start()
-
-# FFmpeg command with real-time metadata overlay
 ffmpeg_cmd = [
-    "ffmpeg", "-re", "-i", audio_url,
-    "-loop", "1", "-i", background_img,
-    "-i", logo_img,
-    "-vf",
+    "ffmpeg",
+    "-re", "-i", audio_url,
+    "-loop", "1", "-i", background_img,  # Background input
+    "-i", logo_img,                       # Logo input
+    "-filter_complex",
+    # Create circular visualizer with hue cycling every 15 seconds
+    "[0:a]avectorscope=s=1280x720:r=30,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
+    # Dynamically expand/contract the visualizer (scaling each frame)
+    "[viz]scale=w=1280*(1+0.5*sin(2*PI*t/15)):h=720*(1+0.5*sin(2*PI*t/15)):eval=frame[exp_viz];"
+    # Scale background and logo
     "[1:v]scale=1280:720[bg];"
     "[2:v]scale=200:200[logo];"
-    "[bg][logo]overlay=W-w-20:H-h-20[bg_logo];"
-    f"[bg_logo]drawtext=textfile={metadata_file}:fontcolor=white:fontsize=40:x=20:y=H-h-50:reload=1[out]",
-    "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-b:v", "1000k",
+    # Overlay the expanded visualizer centered on the background
+    "[bg][exp_viz]overlay=x='(W-w)/2':y='(H-h)/2'[bgviz];"
+    # Overlay the bouncing logo that reflects off every edge
+    "[bgviz][logo]overlay="
+    "x='abs(mod(200*t, (W-w)*2) - (W-w))':"
+    "y='abs(mod(150*t, (H-h)*2) - (H-h))'[out]",
+    "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast",
+    "-tune", "zerolatency", "-b:v", "1000k",
     "-map", "0:a", "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
     "-f", "flv", rtmp_url
 ]
 
-# Run FFmpeg with logging and real-time processing
+# Run FFmpeg with logging
 try:
     with open("ffmpeg_output.log", "w") as log_file:
-        process = subprocess.Popen(ffmpeg_cmd, stderr=log_file, stdout=log_file, bufsize=0)
+        process = subprocess.Popen(ffmpeg_cmd, stderr=log_file, stdout=log_file)
         print("FFmpeg stream started.")
         process.wait()
 except FileNotFoundError:
