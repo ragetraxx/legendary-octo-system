@@ -14,20 +14,14 @@ if not rtmp_url:
 ffmpeg_cmd = [
     "ffmpeg",
     "-re", "-i", audio_url,
-    "-loop", "1", "-i", background_img,  # Background input
-    "-i", logo_img,                       # Logo input
+    "-i", logo_img,  # Logo input
     "-filter_complex",
-    # Create circular visualizer with hue cycling every 15 seconds
-    "[0:a]avectorscope=s=720x720:r=30,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
-    # Dynamically expand/contract the visualizer (scaling each frame)
-    "[viz]scale=w=720*(1+0.5*sin(2*PI*t/15)):h=720*(1+0.5*sin(2*PI*t/15)):eval=frame[exp_viz];"
-    # Scale background and logo
-    "[1:v]scale=1280:720[bg];"
-    "[2:v]scale=200:200[logo];"
-    # Overlay the expanded visualizer centered on the background
-    "[bg][exp_viz]overlay=x='(W-w)/2':y='(H-h)/2'[bgviz];"
-    # Overlay the bouncing logo that reflects off every edge
-    "[bgviz][logo]overlay="
+    # Create full-screen circular visualizer with hue cycling
+    "[0:a]avectorscope=s=1280x720:r=30,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
+    # Expand the visualizer dynamically (scaling effect)
+    "[viz]scale=w=1280*(1+0.3*sin(2*PI*t/10)):h=720*(1+0.3*sin(2*PI*t/10)):eval=frame[exp_viz];"
+    # Overlay the bouncing logo
+    "[exp_viz][1:v]overlay="
     "x='abs(mod(200*t, (W-w)*2) - (W-w))':"
     "y='abs(mod(150*t, (H-h)*2) - (H-h))'[out]",
     "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast",
