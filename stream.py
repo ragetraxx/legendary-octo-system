@@ -16,10 +16,10 @@ ffmpeg_cmd = [
     "-re", "-i", audio_url,
     "-i", logo_img,  # Logo input
     "-filter_complex",
-    # Create full-screen circular visualizer with hue cycling
-    "[0:a]avectorscope=s=1280x720:r=30,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
+    # Create full-screen visualizer that dynamically scales
+    "[0:a]avectorscope=s=iwxih:r=30,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
     # Expand the visualizer dynamically (scaling effect)
-    "[viz]scale=w=1280*(1+0.3*sin(2*PI*t/10)):h=720*(1+0.3*sin(2*PI*t/10)):eval=frame[exp_viz];"
+    "[viz]scale=w=iw*(1+0.3*sin(2*PI*t/10)):h=ih*(1+0.3*sin(2*PI*t/10)):eval=frame[exp_viz];"
     # Overlay the bouncing logo
     "[exp_viz][1:v]overlay="
     "x='abs(mod(200*t, (W-w)*2) - (W-w))':"
