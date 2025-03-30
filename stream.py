@@ -1,7 +1,7 @@
 import subprocess 
 import os
 
-#Configuration
+# Configuration
 
 audio_url = "https://stream.zeno.fm/q1n2wyfs7x8uv" rtmp_url = os.getenv("RTMP_URL")  # Get RTMP URL from environment variable logo_img = "logo.png"
 
@@ -28,7 +28,7 @@ ffmpeg_cmd = [ "ffmpeg", "-re", "-i", audio_url, "-i", logo_img,  # Logo input "
 
 ]
 
-#Run FFmpeg with logging
+# Run FFmpeg with logging
 
 try: with open("ffmpeg_output.log", "w") as log_file: process = subprocess.Popen(" ".join(ffmpeg_cmd), stderr=log_file, stdout=log_file, shell=True) print("FFmpeg stream started.") process.wait() except FileNotFoundError: print("Error: FFmpeg not found. Ensure it is installed and in your PATH.") except Exception as e: print(f"An unexpected error occurred: {e}")
 
