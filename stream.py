@@ -20,7 +20,7 @@ ffmpeg_cmd = [
     # Create circular visualizer with hue cycling every 15 seconds
     "[0:a]avectorscope=s=1280x720:r=30,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
     # Dynamically expand/contract the visualizer (scaling each frame)
-    "[viz]scale=w=720*(1+0.5*sin(2*PI*t/15)):h=720*(1+0.5*sin(2*PI*t/15)):eval=frame[exp_viz];"
+    "[viz]scale=w=1280*(1+0.5*sin(2*PI*t/15)):h=720*(1+0.5*sin(2*PI*t/15)):eval=frame[exp_viz];"
     # Scale background and logo
     "[1:v]scale=1280:720[bg];"
     "[2:v]scale=200:200[logo];"
