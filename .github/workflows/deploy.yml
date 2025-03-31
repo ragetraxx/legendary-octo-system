@@ -36,7 +36,7 @@ jobs:
         run: |
           nohup python3 stream.py > stream.log 2>&1 &
           echo "Stream started at $(date)" >> stream.log
-          sleep 21500  # ~6 hours to match the schedule
+          sleep 21500  # Keep it running for ~6 hours
 
       - name: Show FFmpeg logs (for debugging)
         if: always()
