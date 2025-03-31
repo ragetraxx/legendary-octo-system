@@ -10,7 +10,7 @@ on:
 
 concurrency:
   group: live-stream
-  cancel-in-progress: true  # Ensures only one instance runs at a time
+  cancel-in-progress: false  # Ensures current workflow completes before starting a new one
 
 jobs:
   deploy:
