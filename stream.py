@@ -23,7 +23,7 @@ ffmpeg_cmd = [
     "[1:v]scale=1280:720[bg];"
     "[2:v]scale=200:200[logo];"
     # Overlay the expanded visualizer centered on the background
-    "[bg][exp_viz]overlay=x='(W-w)/2':y='(H-h)/2'[bgviz];"
+    "[bg][exp_viz]overlay=x=0:y=0[bgviz];"
     # Overlay the bouncing logo that reflects off every edge
     "[bgviz][logo]overlay="
     "x='abs(mod(200*t, (W-w)*2) - (W-w))':"
