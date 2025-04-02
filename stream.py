@@ -17,11 +17,9 @@ ffmpeg_cmd = [
     "-loop", "1", "-i", background_img,  # Background input
     "-i", logo_img,                       # Logo input
     "-filter_complex",
-    # Create circular visualizer with hue cycling every 15 seconds
     "[0:a]avectorscope=s=1920x1080:r=30,format=rgba,hue=h='mod(360*t/10,360)'[viz];"
-    # Dynamically expand/contract the visualizer (scaling each frame)
-    "[viz]scale=w=1280*(0.2+0.8*abs(sin(2*PI*t/10))):h=720*(0.2+0.8*abs(sin(2*PI*t/10))):eval=frame[exp_viz];" 
-    # Scale background and logo
+    "[viz]scale=w=1920*(0.2+0.8*abs(sin(2*PI*t/10))):h=1080*(0.2+0.8*abs(sin(2*PI*t/10))):eval=frame[exp_viz];"
+     # Scale background and logo
     "[1:v]scale=1280:720[bg];"
     "[2:v]scale=200:200[logo];"
     # Overlay the expanded visualizer centered on the background
