@@ -17,15 +17,16 @@ ffmpeg_cmd = [
     "-loop", "1", "-i", background_img,  # Background input
     "-i", logo_img,                       # Logo input
     "-filter_complex",
-    # Sine wave visualizer with color cycling
-    "[0:a]sinewave=s=1920x1080:r=30:freq=1:amplitude=0.5,format=rgba,hue=h='mod(360*t/4,360)'[wave];"
-    # Rotate and scale the sine wave visualizer
-    "[wave]rotate='PI*t/4':w=1920:h=1080,scale=w=1920*(0.5+0.5*sin(2*PI*t/6)):h=1080*(0.5+0.5*sin(2*PI*t/6)):eval=frame[rot_wave];"
-    # Overlay the visualizer onto the background
-    "[1:v][rot_wave]overlay=x=0:y=0:format=auto[bgviz];"
+    # Create circular visualizer with hue cycling every 15 seconds
+    "[0:a]avectorscope=s=1280x720:r=30,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
+    # Dynamically expand/contract the visualizer (scaling each frame)
+    "[viz]scale=w=1280*(1+0.5*sin(2*PI*t/15)):h=720*(1+0.5*sin(2*PI*t/15)):eval=frame[exp_viz];"
     # Scale background and logo
-    "[bgviz][2:v]scale=200:200[logo];"
-    # Overlay the bouncing logo
+    "[1:v]scale=1280:720[bg];"
+    "[2:v]scale=200:200[logo];"
+    # Overlay the expanded visualizer centered on the background
+    "[bg][exp_viz]overlay=x='(W-w)/2':y='(H-h)/2'[bgviz];"
+    # Overlay the bouncing logo that reflects off every edge
     "[bgviz][logo]overlay="
     "x='abs(mod(200*t, (W-w)*2) - (W-w))':"
     "y='abs(mod(150*t, (H-h)*2) - (H-h))'[out]",
