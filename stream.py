@@ -18,7 +18,7 @@ ffmpeg_cmd = [
     "-i", logo_img,                       # Logo input
     "-filter_complex",
     # Create circular visualizer with hue cycling every 15 seconds
-    "[0:a]avectorscope=s=1280x720:r=30,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
+    "[0:a]avectorscope=s=1920x1080:r=30,format=rgba,hue=h='mod(360*t/10,360)'[viz];"
     # Dynamically expand/contract the visualizer (scaling each frame)
     "[viz]scale=w=1280*(0.2+0.8*abs(sin(2*PI*t/10))):h=720*(0.2+0.8*abs(sin(2*PI*t/10))):eval=frame[exp_viz];" 
     # Scale background and logo
