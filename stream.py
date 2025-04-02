@@ -30,7 +30,7 @@ ffmpeg_cmd = [
     "y='abs(mod(150*t, (H-h)*2) - (H-h))'[out]",
     "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast",
     "-tune", "zerolatency", "-b:v", "1000k",
-    "-map", "0:a", "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
+    "-map", "0:a", "-c:a", "aac", "-b:a", "320k", "-ar", "48000",
     "-f", "flv", rtmp_url
 ]
 
