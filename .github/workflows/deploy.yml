@@ -5,12 +5,12 @@ on:
     branches:
       - main
   schedule:
-    - cron: "0 */6 * * *"  # Runs every 6 hours
-  workflow_dispatch:  # Allows manual triggering
+    - cron: "0 */6 * * *"  # Every 6 hours
+  workflow_dispatch:
 
 concurrency:
   group: live-stream
-  cancel-in-progress: false  # Ensures current workflow completes before starting a new one
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -25,6 +25,11 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
       - name: Install FFmpeg
         run: |
           sudo apt-get update
@@ -32,12 +37,10 @@ jobs:
 
       - name: Run live stream script
         env:
-          RTMP_URL: ${{ secrets.RTMP_URL }}  # Inject RTMP URL from GitHub Secrets
+          RTMP_URL: ${{ secrets.RTMP_URL }}
         run: |
-          nohup python3 stream.py > stream.log 2>&1 &
-          echo "Stream started at $(date)" >> stream.log
-          sleep 21500  # Keep it running for ~6 hours
+          python3 stream.py
 
       - name: Show FFmpeg logs (for debugging)
-        if: always()
-        run: cat stream.log
+        if: failure()
+        run: cat ffmpeg_output.log
