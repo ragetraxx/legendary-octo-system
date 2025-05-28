@@ -1,42 +1,66 @@
-import subprocess
 import os
+import re
+import subprocess
 import requests
+from bs4 import BeautifulSoup
 
-# === Configuration ===
-audio_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"  # Use full tokenized URL if necessary
-rtmp_url = os.getenv("RTMP_URL")  # Set your RTMP URL as an environment variable
+# Configuration
+zeno_station_url = "https://zeno.fm/radio/ragemusicph/"
+rtmp_url = os.getenv("RTMP_URL")  # Your RTMP URL, set this in GitHub Secrets
 background_img = "background.png"
 logo_img = "logo.png"
 ffmpeg_log = "ffmpeg_output.log"
 
-# === Validate Environment Variable ===
 if not rtmp_url:
     print("❌ Error: RTMP_URL environment variable is not set.")
     exit(1)
 
-# === Check if Audio Stream is Reachable ===
-def is_stream_online(url):
-    try:
-        response = requests.head(url, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            "Referer": "https://zeno.fm/"
-        }, timeout=5)
-        return response.status_code == 200
-    except requests.RequestException as e:
-        print(f"❌ Error checking stream: {e}")
-        return False
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "Referer": "https://zeno.fm/"
+}
 
-if not is_stream_online(audio_url):
-    print(f"❌ Error: Audio stream {audio_url} is not reachable (HTTP 404 or offline).")
+def get_stream_url():
+    print("🔎 Fetching stream URL from Zeno.fm page...")
+    resp = requests.get(zeno_station_url, headers=HEADERS)
+    if resp.status_code != 200:
+        raise Exception(f"Failed to fetch Zeno.fm page, status code: {resp.status_code}")
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Look for the player data in the page scripts or audio tags
+    # Zeno.fm typically embeds the stream URL inside a JavaScript variable or audio src
+
+    # Try to find <audio> tag with src containing stream url
+    audio_tag = soup.find("audio")
+    if audio_tag and audio_tag.has_attr("src"):
+        stream_url = audio_tag["src"]
+        print(f"✅ Found stream URL from audio tag: {stream_url}")
+        return stream_url
+
+    # Fallback: search the page source for URLs matching the stream pattern
+    match = re.search(r'https://stream-\d+\.zeno\.fm/[\w\d]+.*?\.mp3\?zt=[\w\-._~%]+', resp.text)
+    if match:
+        stream_url = match.group(0)
+        print(f"✅ Found stream URL from page regex: {stream_url}")
+        return stream_url
+
+    raise Exception("❌ Could not find stream URL on the page")
+
+stream_url = None
+try:
+    stream_url = get_stream_url()
+except Exception as e:
+    print(e)
     exit(1)
 
-# === FFmpeg Command ===
+# Build FFmpeg command with user-agent and referer headers
 ffmpeg_cmd = [
     "ffmpeg",
     "-re",
-    "-user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/123.0.0.0 Safari/537.36",
-    "-headers", "Referer: https://zeno.fm/\r\n",
-    "-i", audio_url,
+    "-user_agent", HEADERS["User-Agent"],
+    "-headers", f"Referer: {HEADERS['Referer']}\r\n",
+    "-i", stream_url,
     "-loop", "1", "-i", background_img,
     "-i", logo_img,
     "-filter_complex",
@@ -54,7 +78,6 @@ ffmpeg_cmd = [
     "-f", "flv", rtmp_url
 ]
 
-# === Run FFmpeg with Logging ===
 try:
     with open(ffmpeg_log, "w") as log_file:
         print("🚀 Starting FFmpeg stream...")
@@ -62,6 +85,6 @@ try:
         process.wait()
         print("✅ FFmpeg process ended.")
 except FileNotFoundError:
-    print("❌ Error: FFmpeg not found. Ensure it is installed and in your PATH.")
+    print("❌ FFmpeg not found. Install it and make sure it's in your PATH.")
 except Exception as e:
-    print(f"❌ Unexpected error occurred: {e}")
+    print(f"❌ Unexpected error: {e}")
