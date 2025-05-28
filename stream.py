@@ -1,12 +1,9 @@
 import os
-import re
 import subprocess
-import requests
-from bs4 import BeautifulSoup
 
 # Configuration
-zeno_station_url = "https://zeno.fm/radio/ragemusicph/"
-rtmp_url = os.getenv("RTMP_URL")  # Your RTMP URL, set this in GitHub Secrets
+stream_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"
+rtmp_url = os.getenv("RTMP_URL")
 background_img = "background.png"
 logo_img = "logo.png"
 ffmpeg_log = "ffmpeg_output.log"
@@ -20,41 +17,7 @@ HEADERS = {
     "Referer": "https://zeno.fm/"
 }
 
-def get_stream_url():
-    print("🔎 Fetching stream URL from Zeno.fm page...")
-    resp = requests.get(zeno_station_url, headers=HEADERS)
-    if resp.status_code != 200:
-        raise Exception(f"Failed to fetch Zeno.fm page, status code: {resp.status_code}")
-
-    soup = BeautifulSoup(resp.text, "html.parser")
-
-    # Look for the player data in the page scripts or audio tags
-    # Zeno.fm typically embeds the stream URL inside a JavaScript variable or audio src
-
-    # Try to find <audio> tag with src containing stream url
-    audio_tag = soup.find("audio")
-    if audio_tag and audio_tag.has_attr("src"):
-        stream_url = audio_tag["src"]
-        print(f"✅ Found stream URL from audio tag: {stream_url}")
-        return stream_url
-
-    # Fallback: search the page source for URLs matching the stream pattern
-    match = re.search(r'https://stream-\d+\.zeno\.fm/[\w\d]+.*?\.mp3\?zt=[\w\-._~%]+', resp.text)
-    if match:
-        stream_url = match.group(0)
-        print(f"✅ Found stream URL from page regex: {stream_url}")
-        return stream_url
-
-    raise Exception("❌ Could not find stream URL on the page")
-
-stream_url = None
-try:
-    stream_url = get_stream_url()
-except Exception as e:
-    print(e)
-    exit(1)
-
-# Build FFmpeg command with user-agent and referer headers
+# FFmpeg command optimized for low bandwidth (~300–500 kbps total)
 ffmpeg_cmd = [
     "ffmpeg",
     "-re",
@@ -64,26 +27,26 @@ ffmpeg_cmd = [
     "-loop", "1", "-i", background_img,
     "-i", logo_img,
     "-filter_complex",
-    "[0:a]avectorscope=s=1280x720:r=30,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
-    "[viz]scale=w=1280:h=720:eval=frame[exp_viz];"
-    "[1:v]scale=1280:720[bg];"
-    "[2:v]scale=200:200[logo];"
+    "[0:a]avectorscope=s=640x360:r=15,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
+    "[viz]scale=w=640:h=360:eval=frame[exp_viz];"
+    "[1:v]scale=640:360[bg];"
+    "[2:v]scale=100:100[logo];"
     "[bg][exp_viz]overlay=x='(W-w)/2':y='(H-h)/2'[bgviz];"
     "[bgviz][logo]overlay="
-    "x='abs(mod(200*t, (W-w)*2) - (W-w))':"
-    "y='abs(mod(150*t, (H-h)*2) - (H-h))'[out]",
+    "x='abs(mod(100*t, (W-w)*2) - (W-w))':"
+    "y='abs(mod(75*t, (H-h)*2) - (H-h))'[out]",
     "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast",
-    "-tune", "zerolatency", "-b:v", "1000k",
-    "-map", "0:a", "-c:a", "aac", "-b:a", "320k", "-ar", "48000",
+    "-tune", "zerolatency", "-b:v", "200k",
+    "-map", "0:a", "-c:a", "aac", "-b:a", "96k", "-ac", "1", "-ar", "44100",
     "-f", "flv", rtmp_url
 ]
 
 try:
     with open(ffmpeg_log, "w") as log_file:
-        print("🚀 Starting FFmpeg stream...")
+        print("🚀 Starting FFmpeg stream (low bandwidth)...")
         process = subprocess.Popen(ffmpeg_cmd, stderr=log_file, stdout=log_file)
         process.wait()
-        print("✅ FFmpeg process ended.")
+        print("✅ FFmpeg process completed.")
 except FileNotFoundError:
     print("❌ FFmpeg not found. Install it and make sure it's in your PATH.")
 except Exception as e:
