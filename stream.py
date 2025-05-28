@@ -3,8 +3,8 @@ import os
 import requests
 
 # === Configuration ===
-audio_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"
-rtmp_url = os.getenv("RTMP_URL")  # Set this environment variable before running
+audio_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"  # Use full tokenized URL if necessary
+rtmp_url = os.getenv("RTMP_URL")  # Set your RTMP URL as an environment variable
 background_img = "background.png"
 logo_img = "logo.png"
 ffmpeg_log = "ffmpeg_output.log"
@@ -17,7 +17,10 @@ if not rtmp_url:
 # === Check if Audio Stream is Reachable ===
 def is_stream_online(url):
     try:
-        response = requests.head(url, timeout=5)
+        response = requests.head(url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Referer": "https://zeno.fm/"
+        }, timeout=5)
         return response.status_code == 200
     except requests.RequestException as e:
         print(f"❌ Error checking stream: {e}")
@@ -30,7 +33,10 @@ if not is_stream_online(audio_url):
 # === FFmpeg Command ===
 ffmpeg_cmd = [
     "ffmpeg",
-    "-re", "-i", audio_url,
+    "-re",
+    "-user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/123.0.0.0 Safari/537.36",
+    "-headers", "Referer: https://zeno.fm/\r\n",
+    "-i", audio_url,
     "-loop", "1", "-i", background_img,
     "-i", logo_img,
     "-filter_complex",
@@ -54,7 +60,7 @@ try:
         print("🚀 Starting FFmpeg stream...")
         process = subprocess.Popen(ffmpeg_cmd, stderr=log_file, stdout=log_file)
         process.wait()
-        print("ℹ️ FFmpeg process ended.")
+        print("✅ FFmpeg process ended.")
 except FileNotFoundError:
     print("❌ Error: FFmpeg not found. Ensure it is installed and in your PATH.")
 except Exception as e:
