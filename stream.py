@@ -22,7 +22,7 @@ HEADERS = {
 # === Codec Settings ===
 video_codec = "libx265" if USE_H265 else "libx264"
 profile = "main" if USE_H265 else "high"
-level = "4.1"
+level = "3.2"
 
 # === FFmpeg Command ===
 ffmpeg_cmd = [
@@ -34,9 +34,9 @@ ffmpeg_cmd = [
     "-loop", "1", "-i", background_img,
     "-i", logo_img,
     "-filter_complex",
-    "[0:a]avectorscope=s=1280x720:r=25,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
-    "[viz]scale=1280:720[exp_viz];"
-    "[1:v]scale=1280:720[bg];"
+    "[0:a]avectorscope=s=1024x576:r=25,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
+    "[viz]scale=1024:576[exp_viz];"
+    "[1:v]scale=1024:576[bg];"
     "[2:v]scale=150:150[logo];"
     "[bg][exp_viz]overlay=(W-w)/2:(H-h)/2[bgviz];"
     "[bgviz][logo]overlay="
@@ -48,9 +48,9 @@ ffmpeg_cmd = [
     "-level:v", level,
     "-preset", "ultrafast",
     "-tune", "zerolatency",
-    "-b:v", "3000k",
-    "-maxrate", "3200k",
-    "-bufsize", "3200k",
+    "-b:v", "1300k",
+    "-maxrate", "1400k",
+    "-bufsize", "1400k",
     "-pix_fmt", "yuv420p",
     "-map", "0:a",
     "-c:a", "aac",
@@ -64,7 +64,7 @@ ffmpeg_cmd = [
 # === Run FFmpeg ===
 try:
     with open(ffmpeg_log, "w") as log_file:
-        print("🚀 Starting FFmpeg stream at 1280x720, High@L4.1...")
+        print("🚀 Starting FFmpeg stream at 1024x576, High@L3.2...")
         process = subprocess.Popen(ffmpeg_cmd, stdout=log_file, stderr=log_file)
         process.wait()
         print("✅ FFmpeg process completed.")
