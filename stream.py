@@ -1,13 +1,15 @@
 import os
 import subprocess
 
-# Configuration
+# === Configuration ===
 stream_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"
 rtmp_url = os.getenv("RTMP_URL")
 background_img = "background.png"
 logo_img = "logo.png"
 ffmpeg_log = "ffmpeg_output.log"
+USE_H265 = False  # 🔁 Toggle H.265 here (True = use H.265, False = use H.264)
 
+# === Sanity Check ===
 if not rtmp_url:
     print("❌ Error: RTMP_URL environment variable is not set.")
     exit(1)
@@ -17,7 +19,12 @@ HEADERS = {
     "Referer": "https://zeno.fm/"
 }
 
-# FFmpeg command optimized for low bandwidth (~300–500 kbps total)
+# === Codec Settings ===
+video_codec = "libx265" if USE_H265 else "libx264"
+profile = "main" if USE_H265 else "high"
+level = "4.1"
+
+# === FFmpeg Command ===
 ffmpeg_cmd = [
     "ffmpeg",
     "-re",
@@ -27,27 +34,41 @@ ffmpeg_cmd = [
     "-loop", "1", "-i", background_img,
     "-i", logo_img,
     "-filter_complex",
-    "[0:a]avectorscope=s=640x360:r=15,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
-    "[viz]scale=w=640:h=360:eval=frame[exp_viz];"
-    "[1:v]scale=640:360[bg];"
-    "[2:v]scale=100:100[logo];"
-    "[bg][exp_viz]overlay=x='(W-w)/2':y='(H-h)/2'[bgviz];"
+    "[0:a]avectorscope=s=1280x720:r=25,format=rgba,hue=h='mod(360*t/15,360)'[viz];"
+    "[viz]scale=1280:720[exp_viz];"
+    "[1:v]scale=1280:720[bg];"
+    "[2:v]scale=150:150[logo];"
+    "[bg][exp_viz]overlay=(W-w)/2:(H-h)/2[bgviz];"
     "[bgviz][logo]overlay="
-    "x='abs(mod(100*t, (W-w)*2) - (W-w))':"
-    "y='abs(mod(75*t, (H-h)*2) - (H-h))'[out]",
-    "-map", "[out]", "-c:v", "libx264", "-preset", "ultrafast",
-    "-tune", "zerolatency", "-b:v", "200k",
-    "-map", "0:a", "-c:a", "aac", "-b:a", "96k", "-ac", "1", "-ar", "44100",
-    "-f", "flv", rtmp_url
+    "x='abs(mod(100*t\\,(W-w)*2)-(W-w))':"
+    "y='abs(mod(75*t\\,(H-h)*2)-(H-h))'[out]",
+    "-map", "[out]",
+    "-c:v", video_codec,
+    "-profile:v", profile,
+    "-level:v", level,
+    "-preset", "ultrafast",
+    "-tune", "zerolatency",
+    "-b:v", "3000k",
+    "-maxrate", "3200k",
+    "-bufsize", "3200k",
+    "-pix_fmt", "yuv420p",
+    "-map", "0:a",
+    "-c:a", "aac",
+    "-b:a", "160k",
+    "-ac", "2",
+    "-ar", "48000",
+    "-f", "flv",
+    rtmp_url
 ]
 
+# === Run FFmpeg ===
 try:
     with open(ffmpeg_log, "w") as log_file:
-        print("🚀 Starting FFmpeg stream (low bandwidth)...")
-        process = subprocess.Popen(ffmpeg_cmd, stderr=log_file, stdout=log_file)
+        print("🚀 Starting FFmpeg stream at 1280x720, High@L4.1...")
+        process = subprocess.Popen(ffmpeg_cmd, stdout=log_file, stderr=log_file)
         process.wait()
         print("✅ FFmpeg process completed.")
 except FileNotFoundError:
-    print("❌ FFmpeg not found. Install it and make sure it's in your PATH.")
+    print("❌ FFmpeg not found. Make sure it's installed and available in your PATH.")
 except Exception as e:
     print(f"❌ Unexpected error: {e}")
