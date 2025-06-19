@@ -40,7 +40,7 @@ jobs:
           RTMP_URL: ${{ secrets.RTMP_URL }}
         run: |
           echo "📅 Start time: $(date)"
-          timeout 5h50m python3 stream.py
+          timeout 21000 python3 stream.py
           echo "✅ End time: $(date)"
 
       - name: Show FFmpeg logs (for debugging)
