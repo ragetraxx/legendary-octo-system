@@ -10,7 +10,7 @@ on:
 
 concurrency:
   group: live-stream
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -35,11 +35,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Run live stream script
+      - name: Run live stream script (max 5.8 hrs)
         env:
           RTMP_URL: ${{ secrets.RTMP_URL }}
         run: |
-          python3 stream.py
+          echo "Started at $(date)"
+          timeout 5h50m python3 stream.py
+          echo "Ended at $(date)"
 
       - name: Show FFmpeg logs (for debugging)
         if: failure()
