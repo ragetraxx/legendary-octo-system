@@ -7,7 +7,7 @@ rtmp_url = os.getenv("RTMP_URL")
 background_img = "background.png"
 logo_img = "logo.png"
 ffmpeg_log = "ffmpeg_output.log"
-USE_H265 = False  # 🔁 Toggle H.265 here (True = use H.265, False = use H.264)
+USE_H265 = False  # 🔁 Toggle H.265 here
 
 # === Sanity Check ===
 if not rtmp_url:
@@ -62,12 +62,24 @@ ffmpeg_cmd = [
 ]
 
 # === Run FFmpeg ===
+def tee_output(proc, logfile_path):
+    with open(logfile_path, "w") as f:
+        for line in proc.stderr:
+            decoded = line.decode(errors='replace')
+            print(decoded, end='')  # Print to GitHub Actions log
+            f.write(decoded)
+
+print("🚀 Starting FFmpeg stream at 1024x576, High@L3.2...")
 try:
-    with open(ffmpeg_log, "w") as log_file:
-        print("🚀 Starting FFmpeg stream at 1024x576, High@L3.2...")
-        process = subprocess.Popen(ffmpeg_cmd, stdout=log_file, stderr=log_file)
-        process.wait()
-        print("✅ FFmpeg process completed.")
+    process = subprocess.Popen(
+        ffmpeg_cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        bufsize=1
+    )
+    tee_output(process, ffmpeg_log)
+    process.wait()
+    print("✅ FFmpeg process completed.")
 except FileNotFoundError:
     print("❌ FFmpeg not found. Make sure it's installed and available in your PATH.")
 except Exception as e:
