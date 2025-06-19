@@ -39,10 +39,16 @@ jobs:
         env:
           RTMP_URL: ${{ secrets.RTMP_URL }}
         run: |
-          echo "Started at $(date)"
+          echo "📅 Start time: $(date)"
           timeout 5h50m python3 stream.py
-          echo "Ended at $(date)"
+          echo "✅ End time: $(date)"
 
       - name: Show FFmpeg logs (for debugging)
-        if: failure()
-        run: cat ffmpeg_output.log
+        if: always()
+        run: |
+          if [ -f ffmpeg_output.log ]; then
+            echo "🔍 Showing FFmpeg logs:"
+            cat ffmpeg_output.log
+          else
+            echo "⚠️ FFmpeg log not found. The stream may have failed to start."
+          fi
