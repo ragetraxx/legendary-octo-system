@@ -35,12 +35,39 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Run live stream script (max 5.8 hrs)
+      - name: Run live stream script (auto-restart up to 5.8 hrs)
         env:
           RTMP_URL: ${{ secrets.RTMP_URL }}
         run: |
           echo "📅 Start time: $(date)"
-          timeout 21000 python3 stream.py
+          START_TIME=$(date +%s)
+          TIME_LIMIT=21000  # 5.8 hours in seconds
+
+          while true; do
+            NOW=$(date +%s)
+            ELAPSED=$((NOW - START_TIME))
+            REMAINING=$((TIME_LIMIT - ELAPSED))
+
+            if [ $REMAINING -le 0 ]; then
+              echo "⏱️ Time limit reached. Ending loop."
+              break
+            fi
+
+            echo "🔁 Launching stream.py (remaining: ${REMAINING}s)..."
+            timeout $REMAINING python3 stream.py
+
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "✅ stream.py exited normally."
+              break
+            elif [ $EXIT_CODE -eq 124 ]; then
+              echo "⚠️ Timeout (124) reached. Restarting..."
+            else
+              echo "❌ stream.py crashed with exit code $EXIT_CODE. Retrying in 5s..."
+              sleep 5
+            fi
+          done
+
           echo "✅ End time: $(date)"
 
       - name: Show FFmpeg logs (for debugging)
