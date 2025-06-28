@@ -1,5 +1,7 @@
 import os
 import subprocess
+import threading
+import time
 
 # === Configuration ===
 stream_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"
@@ -61,15 +63,25 @@ ffmpeg_cmd = [
     rtmp_url
 ]
 
-# === Run FFmpeg ===
-def tee_output(proc, logfile_path):
-    with open(logfile_path, "w") as f:
-        for line in proc.stderr:
-            decoded = line.decode(errors='replace')
-            print(decoded, end='')  # Print to GitHub Actions log
-            f.write(decoded)
+# === Threaded Logging Function ===
+def tee_output_stream(stream, logfile_path):
+    def stream_reader():
+        with open(logfile_path, "w") as f:
+            for line in iter(stream.readline, b''):
+                decoded = line.decode(errors='replace')
+                print(decoded, end='')  # Print to GitHub log
+                f.write(decoded)
+    return stream_reader
 
+# === Heartbeat Logger ===
+def heartbeat(process):
+    while process.poll() is None:
+        print(f"💓 Still streaming... {time.strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
+        time.sleep(55)
+
+# === Launch FFmpeg ===
 print("🚀 Starting FFmpeg stream at 1024x576, High@L3.2...")
+
 try:
     process = subprocess.Popen(
         ffmpeg_cmd,
@@ -77,9 +89,19 @@ try:
         stderr=subprocess.PIPE,
         bufsize=1
     )
-    tee_output(process, ffmpeg_log)
+
+    stderr_thread = threading.Thread(target=tee_output_stream(process.stderr, ffmpeg_log))
+    heartbeat_thread = threading.Thread(target=heartbeat, args=(process,))
+
+    stderr_thread.start()
+    heartbeat_thread.start()
+
     process.wait()
+    stderr_thread.join()
+    heartbeat_thread.join()
+
     print("✅ FFmpeg process completed.")
+
 except FileNotFoundError:
     print("❌ FFmpeg not found. Make sure it's installed and available in your PATH.")
 except Exception as e:
