@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: "0 */6 * * *"  # Runs every 6 hours
+    - cron: "0 */6 * * *"  # Every 6 hours
   workflow_dispatch:
 
 concurrency:
@@ -15,6 +15,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 4320  # 72 hours (maximum allowed)
 
     steps:
       - name: Checkout code
@@ -35,34 +36,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Run live stream script (auto-restart on crash)
+      - name: Run live stream script with auto-restart
         env:
           RTMP_URL: ${{ secrets.RTMP_URL }}
         run: |
-          echo "📅 Start time: $(date)"
-
+          echo "📅 Stream Start: $(date)"
           while true; do
-            echo "🔁 Launching stream.py..."
+            echo "▶️ Launching stream.py..."
             python3 stream.py
             EXIT_CODE=$?
-
-            if [ $EXIT_CODE -eq 0 ]; then
-              echo "✅ stream.py exited normally."
-              break
-            else
-              echo "❌ stream.py crashed with exit code $EXIT_CODE. Retrying in 5s..."
-              sleep 5
-            fi
+            echo "⚠️ stream.py exited with code $EXIT_CODE. Restarting in 5 seconds..."
+            sleep 5
           done
-
-          echo "✅ End time: $(date)"
 
       - name: Show FFmpeg logs (if available)
         if: always()
         run: |
           if [ -f ffmpeg_output.log ]; then
-            echo "🔍 FFmpeg Output:"
+            echo "📄 FFmpeg Output:"
             cat ffmpeg_output.log
           else
-            echo "⚠️ FFmpeg log not found."
+            echo "⚠️ No ffmpeg_output.log found."
           fi
