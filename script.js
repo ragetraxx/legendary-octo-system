@@ -1,6 +1,6 @@
 const playButton = document.getElementById('playButton');
 const songTitle = document.getElementById('songTitle');
-const songDesc = document.getElementById('songDesc');
+const songMeta = document.getElementById('songMeta');
 const cd = document.getElementById('cd');
 const playlistDiv = document.getElementById('playlist');
 
@@ -8,34 +8,25 @@ let playlist = [];
 let currentIndex = 0;
 let audio = new Audio();
 
+function getImageURL(songId) {
+  return `https://radiooptimism.lg.com/images/${songId}_400x400.jpg`;
+}
+
+function getAudioURL(songId) {
+  return `https://radiooptimism.lg.com/songs/${songId}.mp3`;
+}
+
 async function fetchPlaylist() {
   const res = await fetch('https://radiooptimism.lg.com/api/playlist?language_code=en-US');
   const data = await res.json();
 
-  const songIds = data.map(song => song.song_id);
-
-  // Fetch full song info
-  const infoPromises = songIds.map(async id => {
-    try {
-      const res = await fetch(`https://radiooptimism.lg.com/api/songs/info?id=${id}`);
-      const info = await res.json();
-      return {
-        id,
-        title: info.title || 'Unknown Title',
-        desc: info.description || '',
-        image: `https://radiooptimism.lg.com/images/${id}_400x400.jpg`
-      };
-    } catch (err) {
-      return {
-        id,
-        title: 'Unknown Title',
-        desc: '',
-        image: 'https://via.placeholder.com/400x400?text=No+Image'
-      };
-    }
-  });
-
-  playlist = await Promise.all(infoPromises);
+  playlist = data.map(song => ({
+    id: song.song_id,
+    title: song.title || 'Untitled',
+    sender: song.sender_name || '',
+    recipient: song.recipient_name || '',
+    image: getImageURL(song.song_id)
+  }));
 }
 
 function updateVisualPlaylist() {
@@ -59,14 +50,14 @@ function playNextSong() {
   if (currentIndex >= playlist.length) currentIndex = 0;
 
   const song = playlist[currentIndex];
-  const audioURL = `https://radiooptimism.lg.com/songs/${song.id}.mp3`;
+  const audioURL = getAudioURL(song.id);
 
   audio.src = audioURL;
   audio.play();
 
   // Update UI
   songTitle.textContent = song.title;
-  songDesc.textContent = song.desc || 'No description available.';
+  songMeta.textContent = `From: ${song.sender} → To: ${song.recipient}`;
   cd.src = song.image;
   cd.classList.add('rotate');
 
