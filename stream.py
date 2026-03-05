@@ -9,11 +9,11 @@ rtmp_url = os.getenv("RTMP_URL")
 background_img = "background.png"
 logo_img = "logo.png"
 ffmpeg_log = "ffmpeg_output.log"
-USE_H265 = False  # 🔁 Toggle H.265 here
+USE_H265 = False  # 馃攣 Toggle H.265 here
 
 # === Sanity Check ===
 if not rtmp_url:
-    print("❌ Error: RTMP_URL environment variable is not set.")
+    print("鉂� Error: RTMP_URL environment variable is not set.")
     exit(1)
 
 HEADERS = {
@@ -76,11 +76,11 @@ def tee_output_stream(stream, logfile_path):
 # === Heartbeat Logger ===
 def heartbeat(process):
     while process.poll() is None:
-        print(f"💓 Still streaming... {time.strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
+        print(f"馃挀 Still streaming... {time.strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
         time.sleep(55)
 
 # === Launch FFmpeg ===
-print("🚀 Starting FFmpeg stream at 1024x576, High@L3.2...")
+print("馃殌 Starting FFmpeg stream at 1024x576, High@L3.2...")
 
 try:
     process = subprocess.Popen(
@@ -100,9 +100,9 @@ try:
     stderr_thread.join()
     heartbeat_thread.join()
 
-    print("✅ FFmpeg process completed.")
+    print("鉁� FFmpeg process completed.")
 
 except FileNotFoundError:
-    print("❌ FFmpeg not found. Make sure it's installed and available in your PATH.")
+    print("鉂� FFmpeg not found. Make sure it's installed and available in your PATH.")
 except Exception as e:
-    print(f"❌ Unexpected error: {e}")
+    print(f"鉂� Unexpected error: {e}")
