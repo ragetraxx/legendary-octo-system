@@ -5,9 +5,10 @@ import time
 import sys
 
 # === Configuration ===
+# Ensure your RTMP_URL is set in your environment variables
 stream_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"
 rtmp_url    = os.getenv("RTMP_URL")
-background_img = "background.png"  # Should exist and be \~720x1280+
+background_img = "background.png"  # 720x1280 recommended
 logo_img    = "logo.png"
 ffmpeg_log  = "ffmpeg_output.log"
 
@@ -18,36 +19,39 @@ if not rtmp_url:
 # === FFmpeg Command ===
 ffmpeg_cmd = [
     "ffmpeg",
-    "-re",
-    "-i", stream_url,
-    "-loop", "1", "-i", background_img,
-    "-i", logo_img,
+    "-re", "-i", stream_url,                                     # Input 0: Audio Stream
+    "-loop", "1", "-re", "-i", background_img,                   # Input 1: Background
+    "-loop", "1", "-re", "-i", logo_img,                         # Input 2: Logo
     "-filter_complex",
-    "[0:a]asplit=2[aspec][abeat];"
-    "[aspec]showfreqs="
-    "s=720x820:"
-    "mode=bar:"
-    "colors=#9933ff|#3366ff|#00ccff|#33ff99|#ffff66|#ff4444:"
-    "ascale=log:"
-    "fscale=sqrt:"
-    "win_func=gauss:"
-    "orientation=vertical:"
-    "legend=disabled:"
-    "averager=10:"
-    "peaks=0"
-    "[spec];"
+    # 1. Split audio into 3 paths: Spectrum, Volume Bars, and Final Output Audio
+    "[0:a]asplit=3[aspec][abeat][aout];"
+    
+    # 2. Generate Visualizers
+    "[aspec]showfreqs=s=720x820:mode=bar:colors=#9933ff|#3366ff|#00ccff|#33ff99|#ffff66|#ff4444:"
+    "ascale=log:fscale=sqrt:win_func=gauss:orientation=vertical:legend=disabled:averager=10:peaks=0[spec];"
+    
     "[abeat]showvolume=r=25:f=peak:draw=full:s=720x180:transparency=0.4[vol];"
-    "[1:v]scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2:black[bg];"
+    
+    # 3. Prepare Background and Logo
+    "[1:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280[bg];"
     "[2:v]scale=220:-1[logo];"
+    
+    # 4. Layering the Visuals
     "[bg][spec]overlay=0:(H-h-60):format=auto[bgsp];"
     "[bgsp][vol]overlay=0:(H-h-20):format=auto[bgspv];"
+    
+    # 5. Apply Pulsing & Text Box
     "[bgspv]format=rgba,geq=lum='lum(X,Y)*(1+0.7*A)':a='a(X,Y)*(1+0.5*A)'[pulsed];"
     "[pulsed]drawbox=x=W-320:y=200:w=300:h=200:t=fill:c=black@0.6[boxed];"
-    "[boxed]drawtext=fontcolor=white:fontsize=28:borderw=2:bordercolor=black@0.6:x=W-300:y=240:text='Now Playing\\: %{metadata\\:icy-title}':expansion=normal:reload=1[txt];"
-    "[txt][logo]overlay=x='abs(mod(100*t,(W-w)*2)-(W-w))':y='abs(mod(70*t,(H-h)*2)-(H-h))',format=yuv420p[out]",
+    
+    # 6. Metadata Text & Moving Logo Overlay
+    "[boxed]drawtext=fontcolor=white:fontsize=24:borderw=2:bordercolor=black@0.6:x=W-300:y=240:"
+    "text='Now Playing\\: %{metadata\\:icy-title}':expansion=normal:reload=1[txt];"
+    
+    "[txt][logo]overlay=x='abs(mod(100*t,(W-w)*2)-(W-w))':y='abs(mod(70*t,(H-h)*2)-(H-h))',format=yuv420p[v_out]",
 
-    "-map", "[out]",
-    "-map", "0:a",
+    "-map", "[v_out]", 
+    "-map", "[aout]", 
     "-c:v", "libx264",
     "-preset", "ultrafast",
     "-tune", "zerolatency",
@@ -64,10 +68,12 @@ ffmpeg_cmd = [
 def log_reader(pipe):
     with open(ffmpeg_log, "a", encoding="utf-8") as f:
         for line in iter(pipe.readline, ''):
+            # Print to console for real-time monitoring
             print(f"[FFmpeg] {line}", end='', flush=True)
             f.write(line)
 
-print(f"🚀 Starting fixed Winamp-style visualizer + Now Playing → {time.strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"🚀 Starting Stream: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"📡 Target: {rtmp_url}")
 
 try:
     process = subprocess.Popen(
@@ -80,13 +86,18 @@ try:
         errors='replace'
     )
 
+    # Start logging thread
     thread = threading.Thread(target=log_reader, args=(process.stdout,))
     thread.daemon = True
     thread.start()
 
+    # Wait for the process to finish
     return_code = process.wait()
-    print(f"🏁 FFmpeg exited with code {return_code}")
+    print(f"\n🏁 FFmpeg exited with code {return_code}")
 
+except KeyboardInterrupt:
+    print("\n🛑 Stopping stream...")
+    process.terminate()
 except Exception as e:
     print(f"❌ Critical error: {e}")
     sys.exit(1)
