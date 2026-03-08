@@ -9,13 +9,14 @@ stream_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"
 rtmp_url = os.getenv("RTMP_URL")
 background_img = "background.png"
 logo_img = "logo.png"
+font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 if not rtmp_url:
     print("❌ Error: RTMP_URL environment variable is not set.")
     sys.exit(1)
 
 # === FFmpeg Command ===
-# Using absolute strings to ensure no shell expansion issues
+# Removed 'reload=1' and simplified drawtext to prevent file-read errors
 ffmpeg_cmd = [
     "ffmpeg",
     "-re", "-i", stream_url,
@@ -30,7 +31,7 @@ ffmpeg_cmd = [
     "[bg][spec]overlay=0:560[bgsp];"
     "[bgsp][vol]overlay=0:1160[bgspv];"
     "[bgspv]drawbox=x=400:y=200:w=300:h=200:t=fill:c=black@0.6[boxed];"
-    "[boxed]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:fontcolor=white:fontsize=24:x=420:y=240:text='Now Playing':reload=1[txt];"
+    f"[boxed]drawtext=fontfile={font_path}:fontcolor=white:fontsize=24:x=420:y=240:text='Now Playing':shadowx=2:shadowy=2[txt];"
     "[txt][logo]overlay=x='abs(mod(100*t,400))':y='abs(mod(70*t,900))',format=yuv420p[v_out]",
     "-map", "[v_out]", "-map", "[aout]",
     "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
@@ -38,22 +39,9 @@ ffmpeg_cmd = [
     "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-f", "flv", rtmp_url
 ]
 
-# Print the command for debugging
-print(f"DEBUG: Command is: {' '.join(ffmpeg_cmd)}")
-
 try:
-    process = subprocess.Popen(
-        ffmpeg_cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        universal_newlines=True
-    )
-    
-    # Read output
+    process = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
     for line in iter(process.stdout.readline, ''):
-        print(f"[FFmpeg Output] {line.strip()}")
-    
-    return_code = process.wait()
-    print(f"🏁 FFmpeg finished with {return_code}")
+        print(f"[FFmpeg] {line.strip()}")
 except Exception as e:
-    print(f"❌ Python Error: {e}")
+    print(f"❌ Error: {e}")
