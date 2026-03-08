@@ -7,7 +7,7 @@ import sys
 # === Configuration ===
 stream_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"
 rtmp_url    = os.getenv("RTMP_URL")
-background_img = "background.png"  # Should be at least 720×1280 or larger
+background_img = "background.png"  # Should exist and be \~720x1280+
 logo_img    = "logo.png"
 ffmpeg_log  = "ffmpeg_output.log"
 
@@ -15,7 +15,7 @@ if not rtmp_url:
     print("❌ Error: RTMP_URL environment variable is not set.")
     sys.exit(1)
 
-# === FFmpeg Command - Winamp-style + Now Playing text on right ===
+# === FFmpeg Command - Winamp-style + Now Playing (fixed) ===
 ffmpeg_cmd = [
     "ffmpeg",
     "-re",
@@ -24,10 +24,10 @@ ffmpeg_cmd = [
     "-i", logo_img,
     "-filter_complex",
 
-    # 1. Split audio for analyzers
+    # 1. Split audio
     "[0:a]asplit=2[aspec][abeat];"
 
-    # 2. Winamp-style frequency bars (peaks corrected)
+    # 2. Winamp-style bars – peaks removed (invalid option)
     "[aspec]showfreqs="
     "s=720x820:"
     "mode=bar:"
@@ -38,11 +38,10 @@ ffmpeg_cmd = [
     "orientation=vertical:"
     "legend=disabled:"
     "averager=10:"
-    "peaks=1:"
-    "peakb=0.88"
+    "peaks=0"   # ← safe: 1 would show static peak lines if you want to test
     "[spec];"
 
-    # 3. Beat/loudness envelope for pulse
+    # 3. Beat pulse
     "[abeat]showvolume="
     "r=25:"
     "f=peak:"
@@ -50,38 +49,34 @@ ffmpeg_cmd = [
     "s=720x180:"
     "transparency=0.4[vol];"
 
-    # 4. Background – force 720×1280
+    # 4. Background
     "[1:v]scale=720:1280:force_original_aspect_ratio=decrease,"
     "pad=720:1280:(ow-iw)/2:(oh-ih)/2:black[bg];"
 
     # 5. Logo
     "[2:v]scale=220:-1[logo];"
 
-    # 6. Composite: background → spectrum → volume glow → pulse → logo
+    # 6. Composite layers
     "[bg][spec]overlay=0:(H-h-60):format=auto[bgsp];"
     "[bgsp][vol]overlay=0:(H-h-20):format=auto[bgspv];"
     "[bgspv]format=rgba,"
     "geq=lum='lum(X,Y)*(1+0.7*A)':a='a(X,Y)*(1+0.5*A)'[pulsed];"
 
-    # ──────────────────────────────────────────────────────────────
-    # NEW: Right-side Now Playing box + text (from ICY metadata)
-    # Box: semi-transparent black strip on right
-    # Text: white, updates when metadata changes
+    # 7. Right-side Now Playing (using icy-title – more reliable for streams)
     "[pulsed]drawbox="
     "x=W-320:y=200:w=300:h=200:t=fill:c=black@0.6[boxed];"
 
     "[boxed]drawtext="
     "fontcolor=white:fontsize=28:borderw=2:bordercolor=black@0.6:"
     "x=W-300:y=240:"
-    "text='Now Playing\\: %{metadata\\:StreamTitle}':"
-    "expansion=normal:reload=1[txt];"   # reload=1 allows metadata updates
+    "text='Now Playing\\: %{metadata\\:icy-title}':"
+    "expansion=normal:reload=1[txt];"
 
     "[txt][logo]overlay="
     "x='abs(mod(100*t,(W-w)*2)-(W-w))':"
     "y='abs(mod(70*t,(H-h)*2)-(H-h))',"
     "format=yuv420p[out]",
 
-    # Output
     "-map", "[out]",
     "-map", "0:a",
     "-c:v", "libx264",
@@ -103,7 +98,7 @@ def log_reader(pipe):
             print(f"[FFmpeg] {line}", end='', flush=True)
             f.write(line)
 
-print(f"🚀 Starting Winamp-style + Now Playing overlay → {time.strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"🚀 Starting fixed Winamp-style visualizer + Now Playing → {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 try:
     process = subprocess.Popen(
