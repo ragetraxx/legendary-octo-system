@@ -7,11 +7,11 @@ import sys
 # === Configuration ===
 stream_url = "https://stream.zeno.fm/q1n2wyfs7x8uv"
 rtmp_url    = os.getenv("RTMP_URL")
-background_img = "background.png"  # Should be 720x1280
+background_img = "background.png" 
 logo_img    = "logo.png"
 ffmpeg_log  = "ffmpeg_output.log"
 
-# Path to a default font on Ubuntu - change this if your system uses a different path
+# Default font path for Ubuntu
 font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 if not rtmp_url:
@@ -21,18 +21,19 @@ if not rtmp_url:
 # === FFmpeg Command ===
 ffmpeg_cmd = [
     "ffmpeg",
-    "-re", "-i", stream_url,                                     # Input 0: Audio
-    "-loop", "1", "-re", "-i", background_img,                   # Input 1: BG
-    "-loop", "1", "-re", "-i", logo_img,                         # Input 2: Logo
+    "-re", "-i", stream_url,
+    "-loop", "1", "-re", "-i", background_img,
+    "-loop", "1", "-re", "-i", logo_img,
     "-filter_complex",
-    # 1. Split audio: one for spectrum, one for volume, one for the stream
+    # 1. Split audio
     "[0:a]asplit=3[aspec][abeat][aout];"
     
-    # 2. Frequency Spectrum Visualizer (Fixed fscale to 'log')
-    "[aspec]showfreqs=s=720x820:mode=bar:colors=#9933ff|#3366ff|#00ccff|#33ff99|#ffff66|#ff4444:"
-    "ascale=log:fscale=log:win_func=gauss:orientation=vertical:legend=disabled:averager=10:peaks=0[spec];"
+    # 2. Spectrum Visualizer - Removed 'orientation', added 'transpose' to make it vertical
+    # We render it at 820x720 then transpose it to 720x820
+    "[aspec]showfreqs=s=820x720:mode=bar:colors=#9933ff|#3366ff|#00ccff|#33ff99|#ffff66|#ff4444:"
+    "ascale=log:fscale=log:win_func=gauss:legend=disabled:averager=10:peaks=0,transpose=1[spec];"
     
-    # 3. Volume Bar Visualizer
+    # 3. Volume Bar
     "[abeat]showvolume=r=25:f=peak:draw=full:s=720x180:transparency=0.4[vol];"
     
     # 4. Prepare Images
@@ -43,10 +44,10 @@ ffmpeg_cmd = [
     "[bg][spec]overlay=0:(H-h-60):format=auto[bgsp];"
     "[bgsp][vol]overlay=0:(H-h-20):format=auto[bgspv];"
     
-    # 6. Pulsing Effect (GEQ is slow; if stream lags, remove this line and change [pulsed] to [bgspv] below)
+    # 6. Pulsing Effect (GEQ is slow; remove if CPU hits 100%)
     "[bgspv]format=rgba,geq=lum='lum(X,Y)*(1+0.7*A)':a='a(X,Y)*(1+0.5*A)'[pulsed];"
     
-    # 7. Metadata Text Box and Moving Logo
+    # 7. Metadata and Moving Logo
     "[pulsed]drawbox=x=W-320:y=200:w=300:h=200:t=fill:c=black@0.6[boxed];"
     
     f"[boxed]drawtext=fontfile={font_path}:fontcolor=white:fontsize=24:borderw=2:bordercolor=black@0.6:x=W-300:y=240:"
@@ -75,7 +76,7 @@ def log_reader(pipe):
             print(f"[FFmpeg] {line}", end='', flush=True)
             f.write(line)
 
-print(f"🚀 Launching Winamp-style Stream: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"🚀 Launching Vertical Stream: {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 try:
     process = subprocess.Popen(
@@ -96,7 +97,7 @@ try:
     print(f"\n🏁 FFmpeg exited with code {return_code}")
 
 except KeyboardInterrupt:
-    print("\n🛑 Stream stopped by user.")
+    print("\n🛑 Stream stopped.")
     process.terminate()
 except Exception as e:
     print(f"❌ Critical error: {e}")
