@@ -28,11 +28,11 @@ ffmpeg_cmd = [
     # 1. Split audio
     "[0:a]asplit=3[aspec][abeat][aout];"
     
-    # 2. Spectrum Visualizer - Minimum parameters
+    # 2. Spectrum Visualizer - Using standard size variable
     "[aspec]showfreqs=s=820x720:mode=bar,transpose=1[spec];"
     
-    # 3. Volume Bar - Simplified to basic parameters (removed 'f=peak')
-    "[abeat]showvolume=r=25:s=720x100:t=0[vol];"
+    # 3. Volume Bar - Using w and h separately for maximum compatibility
+    "[abeat]showvolume=w=720:h=100:r=25:t=0[vol];"
     
     # 4. Prepare Images
     "[1:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280[bg];"
@@ -74,7 +74,7 @@ def log_reader(pipe):
             print(f"[FFmpeg] {line}", end='', flush=True)
             f.write(line)
 
-print(f"🚀 Launching Stream (Zero-Assumption Fix): {time.strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"🚀 Launching Stream (Final Filter Check): {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 try:
     process = subprocess.Popen(
