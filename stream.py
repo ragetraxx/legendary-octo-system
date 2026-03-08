@@ -1,7 +1,5 @@
 import os
 import subprocess
-import threading
-import time
 import sys
 
 # === Configuration ===
@@ -15,8 +13,7 @@ if not rtmp_url:
     print("❌ Error: RTMP_URL environment variable is not set.")
     sys.exit(1)
 
-# === FFmpeg Command ===
-# Removed 'reload=1' and simplified drawtext to prevent file-read errors
+# === Updated FFmpeg Command for 1280x720 ===
 ffmpeg_cmd = [
     "ffmpeg",
     "-re", "-i", stream_url,
@@ -24,15 +21,19 @@ ffmpeg_cmd = [
     "-loop", "1", "-re", "-i", logo_img,
     "-filter_complex",
     "[0:a]asplit=3[aspec][abeat][aout];"
-    "[aspec]showfreqs=s=820x720:mode=bar,transpose=1[spec];"
-    "[abeat]showvolume=w=720:h=100:r=25:t=0[vol];"
-    "[1:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280[bg];"
-    "[2:v]scale=220:-1[logo];"
-    "[bg][spec]overlay=0:560[bgsp];"
-    "[bgsp][vol]overlay=0:1160[bgspv];"
-    "[bgspv]drawbox=x=400:y=200:w=300:h=200:t=fill:c=black@0.6[boxed];"
-    f"[boxed]drawtext=fontfile={font_path}:fontcolor=white:fontsize=24:x=420:y=240:text='Now Playing':shadowx=2:shadowy=2[txt];"
-    "[txt][logo]overlay=x='abs(mod(100*t,400))':y='abs(mod(70*t,900))',format=yuv420p[v_out]",
+    # Adjusted visualizer to fit width
+    "[aspec]showfreqs=s=1280x200:mode=bar,transpose=0[spec];"
+    "[abeat]showvolume=w=640:h=100:r=25:t=0[vol];"
+    # Updated scaling for landscape
+    "[1:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720[bg];"
+    "[2:v]scale=200:-1[logo];"
+    # Re-positioned overlays for 1280x720 canvas
+    "[bg][spec]overlay=0:520[bgsp];"
+    "[bgsp][vol]overlay=0:620[bgspv];"
+    "[bgspv]drawbox=x=20:y=20:w=250:h=80:t=fill:c=black@0.6[boxed];"
+    f"[boxed]drawtext=fontfile={font_path}:fontcolor=white:fontsize=24:x=40:y=45:text='Now Playing'[txt];"
+    # Adjusted animation bounds to fit 1280x720
+    "[txt][logo]overlay=x='abs(mod(100*t,1000))':y='abs(mod(50*t,500))',format=yuv420p[v_out]",
     "-map", "[v_out]", "-map", "[aout]",
     "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
     "-b:v", "2800k", "-maxrate", "2800k", "-bufsize", "5600k",
