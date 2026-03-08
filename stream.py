@@ -26,7 +26,7 @@ ffmpeg_cmd = [
     "[0:a]asplit=3[aspec][abeat][aout];"
     "[aspec]showfreqs=s=820x720:mode=bar,transpose=1[spec];"
     "[abeat]showvolume=w=720:h=100:r=25:t=0[vol];"
-    "[1:v]scale=1280:720:force_original_aspect_ratio=increase,crop=720:1280[bg];"
+    "[1:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280[bg];"
     "[2:v]scale=220:-1[logo];"
     "[bg][spec]overlay=0:560[bgsp];"
     "[bgsp][vol]overlay=0:1160[bgspv];"
