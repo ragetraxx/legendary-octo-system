@@ -15,7 +15,7 @@ if not rtmp_url:
     print("❌ Error: RTMP_URL environment variable is not set.")
     sys.exit(1)
 
-# === FFmpeg Command - Winamp-style + Now Playing (fixed) ===
+# === FFmpeg Command ===
 ffmpeg_cmd = [
     "ffmpeg",
     "-re",
@@ -23,59 +23,28 @@ ffmpeg_cmd = [
     "-loop", "1", "-i", background_img,
     "-i", logo_img,
     "-filter_complex",
-
-    # 1. Split audio
     "[0:a]asplit=2[aspec][abeat];"
-
-    # 2. Winamp-style bars – peaks removed (invalid option)
     "[aspec]showfreqs="
     "s=720x820:"
     "mode=bar:"
     "colors=#9933ff|#3366ff|#00ccff|#33ff99|#ffff66|#ff4444:"
-    "scale=log:"
+    "ascale=log:"
     "fscale=sqrt:"
     "win_func=gauss:"
     "orientation=vertical:"
     "legend=disabled:"
     "averager=10:"
-    "peaks=0"   # ← safe: 1 would show static peak lines if you want to test
+    "peaks=0"
     "[spec];"
-
-    # 3. Beat pulse
-    "[abeat]showvolume="
-    "r=25:"
-    "f=peak:"
-    "draw=full:"
-    "s=720x180:"
-    "transparency=0.4[vol];"
-
-    # 4. Background
-    "[1:v]scale=720:1280:force_original_aspect_ratio=decrease,"
-    "pad=720:1280:(ow-iw)/2:(oh-ih)/2:black[bg];"
-
-    # 5. Logo
+    "[abeat]showvolume=r=25:f=peak:draw=full:s=720x180:transparency=0.4[vol];"
+    "[1:v]scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2:black[bg];"
     "[2:v]scale=220:-1[logo];"
-
-    # 6. Composite layers
     "[bg][spec]overlay=0:(H-h-60):format=auto[bgsp];"
     "[bgsp][vol]overlay=0:(H-h-20):format=auto[bgspv];"
-    "[bgspv]format=rgba,"
-    "geq=lum='lum(X,Y)*(1+0.7*A)':a='a(X,Y)*(1+0.5*A)'[pulsed];"
-
-    # 7. Right-side Now Playing (using icy-title – more reliable for streams)
-    "[pulsed]drawbox="
-    "x=W-320:y=200:w=300:h=200:t=fill:c=black@0.6[boxed];"
-
-    "[boxed]drawtext="
-    "fontcolor=white:fontsize=28:borderw=2:bordercolor=black@0.6:"
-    "x=W-300:y=240:"
-    "text='Now Playing\\: %{metadata\\:icy-title}':"
-    "expansion=normal:reload=1[txt];"
-
-    "[txt][logo]overlay="
-    "x='abs(mod(100*t,(W-w)*2)-(W-w))':"
-    "y='abs(mod(70*t,(H-h)*2)-(H-h))',"
-    "format=yuv420p[out]",
+    "[bgspv]format=rgba,geq=lum='lum(X,Y)*(1+0.7*A)':a='a(X,Y)*(1+0.5*A)'[pulsed];"
+    "[pulsed]drawbox=x=W-320:y=200:w=300:h=200:t=fill:c=black@0.6[boxed];"
+    "[boxed]drawtext=fontcolor=white:fontsize=28:borderw=2:bordercolor=black@0.6:x=W-300:y=240:text='Now Playing\\: %{metadata\\:icy-title}':expansion=normal:reload=1[txt];"
+    "[txt][logo]overlay=x='abs(mod(100*t,(W-w)*2)-(W-w))':y='abs(mod(70*t,(H-h)*2)-(H-h))',format=yuv420p[out]",
 
     "-map", "[out]",
     "-map", "0:a",
