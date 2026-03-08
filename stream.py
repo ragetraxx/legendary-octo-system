@@ -16,6 +16,7 @@ if not rtmp_url:
     sys.exit(1)
 
 # === FFmpeg Command ===
+# Removed 'reload=1' and simplified drawtext to prevent file-read errors
 ffmpeg_cmd = [
     "ffmpeg",
     "-re", "-i", stream_url,
@@ -31,8 +32,7 @@ ffmpeg_cmd = [
     "[bgsp][vol]overlay=0:1160[bgspv];"
     "[bgspv]drawbox=x=400:y=200:w=300:h=200:t=fill:c=black@0.6[boxed];"
     f"[boxed]drawtext=fontfile={font_path}:fontcolor=white:fontsize=24:x=420:y=240:text='Now Playing':shadowx=2:shadowy=2[txt];"
-    # Logo is now fixed at x=10, y=10
-    "[txt][logo]overlay=10:10:format=yuv420p[v_out]",
+    "[txt][logo]overlay=x='abs(mod(100*t,400))':y='abs(mod(70*t,900))',format=yuv420p[v_out]",
     "-map", "[v_out]", "-map", "[aout]",
     "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
     "-b:v", "2800k", "-maxrate", "2800k", "-bufsize", "5600k",
