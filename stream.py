@@ -28,12 +28,11 @@ ffmpeg_cmd = [
     # 1. Split audio
     "[0:a]asplit=3[aspec][abeat][aout];"
     
-    # 2. Spectrum Visualizer - Bare Minimum Settings
-    # Removed averager, peaks, fscale, and ascale to ensure compatibility.
-    "[aspec]showfreqs=s=820x720:mode=bar:colors=#9933ff|#3366ff|#00ccff|#33ff99|#ffff66|#ff4444,transpose=1[spec];"
+    # 2. Spectrum Visualizer - Minimum parameters
+    "[aspec]showfreqs=s=820x720:mode=bar,transpose=1[spec];"
     
-    # 3. Volume Bar
-    "[abeat]showvolume=r=25:f=peak:draw=full:s=720x180:transparency=0.4[vol];"
+    # 3. Volume Bar - Simplified to basic parameters (removed 'f=peak')
+    "[abeat]showvolume=r=25:s=720x100:t=0[vol];"
     
     # 4. Prepare Images
     "[1:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280[bg];"
@@ -43,7 +42,7 @@ ffmpeg_cmd = [
     "[bg][spec]overlay=0:(H-h-60):format=auto[bgsp];"
     "[bgsp][vol]overlay=0:(H-h-20):format=auto[bgspv];"
     
-    # 6. Pulsing Effect (GEQ) - Keep this for the 'Winamp' feel
+    # 6. Pulsing Effect (GEQ)
     "[bgspv]format=rgba,geq=lum='lum(X,Y)*(1+0.7*A)':a='a(X,Y)*(1+0.5*A)'[pulsed];"
     
     # 7. Metadata and Moving Logo
@@ -75,7 +74,7 @@ def log_reader(pipe):
             print(f"[FFmpeg] {line}", end='', flush=True)
             f.write(line)
 
-print(f"🚀 Launching Stream (Minimalist Fix): {time.strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"🚀 Launching Stream (Zero-Assumption Fix): {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 try:
     process = subprocess.Popen(
