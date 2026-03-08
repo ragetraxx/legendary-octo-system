@@ -28,10 +28,9 @@ ffmpeg_cmd = [
     # 1. Split audio
     "[0:a]asplit=3[aspec][abeat][aout];"
     
-    # 2. Spectrum Visualizer - Removed 'orientation', added 'transpose' to make it vertical
-    # We render it at 820x720 then transpose it to 720x820
+    # 2. Spectrum Visualizer - Removed 'legend', kept core visual settings
     "[aspec]showfreqs=s=820x720:mode=bar:colors=#9933ff|#3366ff|#00ccff|#33ff99|#ffff66|#ff4444:"
-    "ascale=log:fscale=log:win_func=gauss:legend=disabled:averager=10:peaks=0,transpose=1[spec];"
+    "ascale=log:fscale=log:win_func=gauss:averager=10:peaks=0,transpose=1[spec];"
     
     # 3. Volume Bar
     "[abeat]showvolume=r=25:f=peak:draw=full:s=720x180:transparency=0.4[vol];"
@@ -44,7 +43,7 @@ ffmpeg_cmd = [
     "[bg][spec]overlay=0:(H-h-60):format=auto[bgsp];"
     "[bgsp][vol]overlay=0:(H-h-20):format=auto[bgspv];"
     
-    # 6. Pulsing Effect (GEQ is slow; remove if CPU hits 100%)
+    # 6. Pulsing Effect (GEQ)
     "[bgspv]format=rgba,geq=lum='lum(X,Y)*(1+0.7*A)':a='a(X,Y)*(1+0.5*A)'[pulsed];"
     
     # 7. Metadata and Moving Logo
@@ -76,7 +75,7 @@ def log_reader(pipe):
             print(f"[FFmpeg] {line}", end='', flush=True)
             f.write(line)
 
-print(f"🚀 Launching Vertical Stream: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"🚀 Launching Stream (Final Fix): {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 try:
     process = subprocess.Popen(
