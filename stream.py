@@ -28,29 +28,27 @@ ffmpeg_cmd = [
     # 1. Split audio
     "[0:a]asplit=3[aspec][abeat][aout];"
     
-    # 2. Spectrum Visualizer - Using standard size variable
+    # 2. Spectrum Visualizer
     "[aspec]showfreqs=s=820x720:mode=bar,transpose=1[spec];"
     
-    # 3. Volume Bar - Using w and h separately for maximum compatibility
+    # 3. Volume Bar
     "[abeat]showvolume=w=720:h=100:r=25:t=0[vol];"
     
-    # 4. Prepare Images
+    # 4. Prepare Images (BG and Logo)
     "[1:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280[bg];"
     "[2:v]scale=220:-1[logo];"
     
-    # 5. Combine Visuals
+    # 5. Combine Visuals (Layering)
     "[bg][spec]overlay=0:(H-h-60):format=auto[bgsp];"
     "[bgsp][vol]overlay=0:(H-h-20):format=auto[bgspv];"
     
-    # 6. Pulsing Effect (GEQ)
-    "[bgspv]format=rgba,geq=lum='lum(X,Y)*(1+0.7*A)':a='a(X,Y)*(1+0.5*A)'[pulsed];"
-    
-    # 7. Metadata and Moving Logo
-    "[pulsed]drawbox=x=W-320:y=200:w=300:h=200:t=fill:c=black@0.6[boxed];"
+    # 6. Metadata Text Box (Directly from bgspv, geq removed for stability)
+    "[bgspv]drawbox=x=W-320:y=200:w=300:h=200:t=fill:c=black@0.6[boxed];"
     
     f"[boxed]drawtext=fontfile={font_path}:fontcolor=white:fontsize=24:borderw=2:bordercolor=black@0.6:x=W-300:y=240:"
     "text='Now Playing\\: %{metadata\\:icy-title}':expansion=normal:reload=1[txt];"
     
+    # 7. Final Moving Logo Overlay
     "[txt][logo]overlay=x='abs(mod(100*t,(W-w)*2)-(W-w))':y='abs(mod(70*t,(H-h)*2)-(H-h))',format=yuv420p[v_out]",
 
     "-map", "[v_out]", 
@@ -74,7 +72,7 @@ def log_reader(pipe):
             print(f"[FFmpeg] {line}", end='', flush=True)
             f.write(line)
 
-print(f"🚀 Launching Stream (Final Filter Check): {time.strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"🚀 Launching Stable Stream: {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 try:
     process = subprocess.Popen(
