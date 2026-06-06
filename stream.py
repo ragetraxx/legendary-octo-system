@@ -14,9 +14,10 @@ if not rtmp_url:
     sys.exit(1)
 
 # Construct the filter complex as a single, continuous string block
+# Corrected avectorscope options: m=lissajous with mirror=1
 filter_str = (
     "[0:a]asplit=2[audio_vis][aout];"
-    "[audio_vis]avectorscope=s=500x500:m=mirror:zoom=2:rc=40:gc=160:bc=240[v_ring];"
+    "[audio_vis]avectorscope=s=500x500:m=lissajous:mirror=1:zoom=2:rc=40:gc=160:bc=240[v_ring];"
     "[1:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720[bg];"
     "[2:v]scale=200:200:force_original_aspect_ratio=decrease[logo];"
     "[bg]drawbox=x=20:y=20:w=250:h=80:t=fill:c=black@0.6[boxed];"
@@ -31,7 +32,7 @@ ffmpeg_cmd = [
     "-re", "-i", stream_url,
     "-loop", "1", "-re", "-i", background_img,
     "-loop", "1", "-re", "-i", logo_img,
-    "-filter_complex", filter_str,  # Pass it cleanly here as one argument
+    "-filter_complex", filter_str,
     "-map", "[v_out]", 
     "-map", "[aout]",
     "-c:v", "libx264", 
